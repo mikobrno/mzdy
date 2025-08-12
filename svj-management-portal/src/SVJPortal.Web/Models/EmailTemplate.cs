@@ -105,7 +105,7 @@ namespace SVJPortal.Web.Models
         [Required]
         public string Popis { get; set; }
         
-        public string DefaultniHodnota { get; set; }
+    public string? DefaultniHodnota { get; set; }
         
         public TypPromenne TypPromenne { get; set; }
         

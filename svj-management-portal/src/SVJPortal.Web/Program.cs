@@ -91,8 +91,14 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Favicon mapping to silence 404 in browsers
-app.MapGet("/favicon.ico", (HttpContext ctx) => ctx.Response.Redirect("/favicon.svg"));
+// Favicon mapping to silence 404 in browsers (respect PathBase)
+app.MapGet("/favicon.ico", async (HttpContext ctx) =>
+{
+    var basePath = ctx.Request.PathBase.HasValue ? ctx.Request.PathBase.Value : string.Empty;
+    var target = string.IsNullOrEmpty(basePath) ? "/favicon.svg" : ($"{basePath}/favicon.svg");
+    ctx.Response.Redirect(target);
+    await Task.CompletedTask;
+});
 
 // Graceful status pages for 404/500 etc.
 app.UseStatusCodePagesWithReExecute("/Home/Error");

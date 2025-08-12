@@ -4,6 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - SVJ Management Portal</title>
+    @{
+        // Base href pro správné generování relativních cest pod subpath
+        var pathBase = Context?.Request?.PathBase.HasValue == true ? Context.Request.PathBase.Value : "/";
+    }
+    <base href="@pathBase" />
     <link rel="icon" type="image/svg+xml" href="~/favicon.svg" />
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
