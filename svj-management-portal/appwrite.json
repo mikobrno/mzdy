@@ -1,0 +1,29 @@
+{
+  "projectId": "svj-portal",
+  "functions": [
+    {
+      "$id": "svj-portal-web",
+      "name": "SVJ Portal Web Application",
+      "runtime": "dotnet-8.0",
+      "execute": ["any"],
+      "events": [],
+      "schedule": "",
+      "timeout": 900,
+      "enabled": true,
+      "logging": true,
+      "entrypoint": "src/SVJPortal.Web/SVJPortal.Web.csproj",
+      "commands": "dotnet restore && dotnet publish -c Release -o published",
+      "ignore": [
+        "node_modules",
+        ".git",
+        ".vscode",
+        "bin",
+        "obj"
+      ],
+      "variables": {
+        "ASPNETCORE_ENVIRONMENT": "Production",
+        "ASPNETCORE_URLS": "http://+:3000"
+      }
+    }
+  ]
+}

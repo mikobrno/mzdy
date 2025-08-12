@@ -1,0 +1,43 @@
+# Ignorovat soubory a složky při Docker build
+node_modules/
+npm-debug.log
+Dockerfile*
+docker-compose*
+.dockerignore
+.git
+.gitignore
+.vs
+.vscode
+*/bin
+*/obj
+**/.toolstarget
+.env
+*.log
+*.md
+README*
+.idea/
+.DS_Store
+thumbs.db
+
+# Vývojové soubory
+*.development.json
+*.local.json
+.user
+*.user
+*.suo
+*.userprefs
+*.sln.ide
+
+# Dočasné soubory
+*.tmp
+*.temp
+*.cache
+.vs/
+.vscode/
+
+# Logy a data
+logs/
+*.log
+data/
+uploads/
+backups/

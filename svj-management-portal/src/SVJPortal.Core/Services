@@ -1,0 +1,137 @@
+using Microsoft.EntityFrameworkCore;
+using SVJPortal.Core.Interfaces;
+using SVJPortal.Web.Data;
+using SVJPortal.Web.Models;
+using SVJPortal.Web.Models.ViewModels;
+
+namespace SVJPortal.Core.Services
+{
+    public class SVJService : ISVJService
+    {
+        private readonly ApplicationDbContext _context;
+
+        public SVJService(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        public async Task<IEnumerable<SVJ>> GetAllSVJsAsync()
+        {
+            return await _context.SVJs
+                .Where(s => s.JeAktivni)
+                .Include(s => s.Zamestnanci.Where(e => e.JeAktivni))
+                .OrderBy(s => s.Nazev)
+                .ToListAsync();
+        }
+
+        public async Task<SVJ> GetSVJByIdAsync(int id)
+        {
+            return await _context.SVJs
+                .Include(s => s.Zamestnanci.Where(e => e.JeAktivni))
+                .Include(s => s.Mzdy)
+                .Include(s => s.EmailSablony)
+                .FirstOrDefaultAsync(s => s.Id == id && s.JeAktivni);
+        }
+
+        public async Task<SVJ> GetSVJByIcoAsync(string ico)
+        {
+            return await _context.SVJs
+                .FirstOrDefaultAsync(s => s.ICO == ico && s.JeAktivni);
+        }
+
+        public async Task<SVJ> CreateSVJAsync(SVJ svj)
+        {
+            svj.DatumVytvoreni = DateTime.Now;
+            _context.SVJs.Add(svj);
+            await _context.SaveChangesAsync();
+            return svj;
+        }
+
+        public async Task<SVJ> UpdateSVJAsync(SVJ svj)
+        {
+            svj.DatumPosledniUpravy = DateTime.Now;
+            _context.Entry(svj).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+            return svj;
+        }
+
+        public async Task<bool> DeleteSVJAsync(int id)
+        {
+            var svj = await _context.SVJs.FindAsync(id);
+            if (svj != null)
+            {
+                svj.JeAktivni = false;
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            return false;
+        }
+
+        public async Task<DashboardViewModel> GetDashboardDataAsync()
+        {
+            var svjs = await GetAllSVJsAsync();
+            var viewModel = new DashboardViewModel
+            {
+                CelkemSVJ = svjs.Count(),
+                AktivnichZamestnancu = svjs.Sum(s => s.Zamestnanci.Count()),
+                SVJCards = svjs.Select(s => new SVJCardViewModel
+                {
+                    Id = s.Id,
+                    Nazev = s.Nazev,
+                    RychlyPopis = s.RychlyPopis,
+                    ZpusobOdesilani = s.ZpusobOdesilani,
+                    KontaktniEmail = s.Email,
+                    PocetZamestnancu = s.Zamestnanci.Count(),
+                    StavMzedVRoce = GetPayrollStatusForYear(s.Id, DateTime.Now.Year)
+                }).ToList()
+            };
+            
+            return viewModel;
+        }
+
+        public async Task<SVJDetailViewModel> GetSVJDetailAsync(int id)
+        {
+            var svj = await GetSVJByIdAsync(id);
+            if (svj == null) return null;
+
+            return new SVJDetailViewModel
+            {
+                SVJ = svj,
+                Zamestnanci = svj.Zamestnanci.ToList(),
+                PosledniMzdy = svj.Mzdy.OrderByDescending(m => m.Rok).ThenByDescending(m => m.Mesic).Take(12).ToList(),
+                EmailSablony = svj.EmailSablony.Where(e => e.JeAktivni).ToList(),
+                StavMzedVRoce = GetPayrollStatusForYear(id, DateTime.Now.Year)
+            };
+        }
+
+        public async Task<bool> ExistsByIcoAsync(string ico)
+        {
+            return await _context.SVJs.AnyAsync(s => s.ICO == ico && s.JeAktivni);
+        }
+
+        private MzdyStavViewModel[] GetPayrollStatusForYear(int svjId, int year)
+        {
+            var result = new MzdyStavViewModel[12];
+            var payrolls = _context.Payrolls
+                .Where(p => p.SVJId == svjId && p.Rok == year)
+                .ToList();
+
+            for (int i = 0; i < 12; i++)
+            {
+                var month = i + 1;
+                var payroll = payrolls.FirstOrDefault(p => p.Mesic == month);
+                
+                result[i] = new MzdyStavViewModel
+                {
+                    Mesic = month,
+                    JeZpracovana = payroll != null,
+                    JeSchvalena = payroll?.Stav == StavMzdyEnum.Schvalena || payroll?.Stav == StavMzdyEnum.Vyplacena,
+                    Stav = payroll?.Stav ?? StavMzdyEnum.Pripravena,
+                    NazevMesice = new DateTime(year, month, 1).ToString("MMM", new System.Globalization.CultureInfo("cs-CZ"))
+                };
+            }
+
+            return result;
+        }
+    }
+}
