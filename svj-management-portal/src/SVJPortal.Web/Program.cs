@@ -75,6 +75,13 @@ if (app.Environment.IsProduction())
 
 app.UseHttpsRedirection();
 
+// Respect PathBase when running behind reverse proxy (e.g., Appwrite)
+var pathBase = app.Configuration["ASPNETCORE_PATHBASE"] ?? app.Configuration["PathBase"];
+if (!string.IsNullOrWhiteSpace(pathBase))
+{
+    app.UsePathBase(pathBase);
+}
+
 var contentTypeProvider = new FileExtensionContentTypeProvider();
 contentTypeProvider.Mappings[".svg"] = "image/svg+xml";
 app.UseStaticFiles(new StaticFileOptions { ContentTypeProvider = contentTypeProvider });
@@ -86,6 +93,9 @@ app.UseAuthorization();
 
 // Favicon mapping to silence 404 in browsers
 app.MapGet("/favicon.ico", (HttpContext ctx) => ctx.Response.Redirect("/favicon.svg"));
+
+// Graceful status pages for 404/500 etc.
+app.UseStatusCodePagesWithReExecute("/Home/Error");
 
 // Konfigurace routingu
 app.MapControllerRoute(
