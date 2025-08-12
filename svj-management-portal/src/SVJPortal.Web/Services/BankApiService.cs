@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Options;
-using SVJPortal.Core.Interfaces;
+using SVJPortal.Web.Models.Interfaces;
 using SVJPortal.Web.Models;
 using System.Text;
 

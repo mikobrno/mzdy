@@ -3,9 +3,10 @@ using Microsoft.Extensions.Options;
 using System.Net;
 using System.Net.Mail;
 using System.Text.RegularExpressions;
-using SVJPortal.Core.Interfaces;
+using SVJPortal.Web.Models.Interfaces;
 using SVJPortal.Web.Data;
 using SVJPortal.Web.Models;
+using SVJPortal.Web.Models.Entities;
 
 namespace SVJPortal.Web.Services
 {

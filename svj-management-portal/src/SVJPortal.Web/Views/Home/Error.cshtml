@@ -1,0 +1,28 @@
+@{
+    ViewData["Title"] = "Chyba";
+}
+
+<div class="text-center">
+    <h1 class="display-1 text-danger">
+        <i class="fas fa-exclamation-triangle"></i>
+    </h1>
+    <h2 class="display-4">Ups! Něco se pokazilo</h2>
+    <p class="lead">Omlouváme se, ale došlo k neočekávané chybě.</p>
+    
+    <div class="mt-4">
+        <a asp-controller="Home" asp-action="Index" class="btn btn-primary">
+            <i class="fas fa-home"></i>
+            Zpět na hlavní stránku
+        </a>
+        <a asp-controller="Dashboard" asp-action="Index" class="btn btn-secondary">
+            <i class="fas fa-tachometer-alt"></i>
+            Dashboard
+        </a>
+    </div>
+    
+    <div class="mt-5">
+        <small class="text-muted">
+            Pokud problém přetrvává, kontaktujte technickou podporu.
+        </small>
+    </div>
+</div>

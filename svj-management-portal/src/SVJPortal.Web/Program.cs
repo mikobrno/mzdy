@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using SVJPortal.Web.Models.Interfaces;
 using SVJPortal.Web.Data;
 using SVJPortal.Web.Services;
-using SVJPortal.Core.Interfaces;
-using SVJPortal.Core.Services;
+using SVJPortal.Web.Models;
 using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -78,10 +80,36 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Konfigurace routingu
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Dashboard}/{action=Index}/{id?}");
+    pattern: "{controller=Home}/{action=Index}/{id?}");
+
+// Specifické routy pro hlavní sekce
+app.MapControllerRoute(
+    name: "dashboard",
+    pattern: "dashboard/{action=Index}/{id?}",
+    defaults: new { controller = "Dashboard" });
+
+app.MapControllerRoute(
+    name: "svj",
+    pattern: "svj/{action=Index}/{id?}",
+    defaults: new { controller = "SVJ" });
+
+app.MapControllerRoute(
+    name: "employees",
+    pattern: "employees/{action=Index}/{id?}",
+    defaults: new { controller = "Employee" });
+
+app.MapControllerRoute(
+    name: "payroll",
+    pattern: "payroll/{action=Index}/{id?}",
+    defaults: new { controller = "Payroll" });
+
 app.MapRazorPages();
+
+// Fallback pro neznámé routy
+app.MapFallbackToController("Index", "Home");
 
 // Initialize roles and admin user
 using (var scope = app.Services.CreateScope())

@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SVJPortal.Core.Interfaces;
+using SVJPortal.Web.Models.Interfaces;
 using SVJPortal.Web.Models.ViewModels;
 
 namespace SVJPortal.Web.Controllers

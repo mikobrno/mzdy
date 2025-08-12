@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using SVJPortal.Core.Interfaces;
+using SVJPortal.Web.Models.Interfaces;
 using SVJPortal.Web.Data;
-using SVJPortal.Web.Models;
+using SVJPortal.Web.Models.Entities;
 using SVJPortal.Web.Models.ViewModels;
 
 namespace SVJPortal.Web.Services

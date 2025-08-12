@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using SVJPortal.Core.Interfaces;
+using SVJPortal.Web.Models.Interfaces;
 using SVJPortal.Web.Data;
 using SVJPortal.Web.Models;
 
