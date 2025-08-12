@@ -7,6 +7,7 @@ using SVJPortal.Web.Data;
 using SVJPortal.Web.Services;
 using SVJPortal.Web.Models;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.StaticFiles;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -73,12 +74,18 @@ if (app.Environment.IsProduction())
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
+
+var contentTypeProvider = new FileExtensionContentTypeProvider();
+contentTypeProvider.Mappings[".svg"] = "image/svg+xml";
+app.UseStaticFiles(new StaticFileOptions { ContentTypeProvider = contentTypeProvider });
 
 app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Favicon mapping to silence 404 in browsers
+app.MapGet("/favicon.ico", (HttpContext ctx) => ctx.Response.Redirect("/favicon.svg"));
 
 // Konfigurace routingu
 app.MapControllerRoute(

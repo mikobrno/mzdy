@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#4e73df"/>
+      <stop offset="100%" stop-color="#224abe"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="12" fill="url(#g)"/>
+  <g fill="#fff" font-family="Segoe UI, Arial, sans-serif" font-weight="700">
+    <text x="50%" y="41" font-size="28" text-anchor="middle">SVJ</text>
+  </g>
+  <path d="M12 44h40" stroke="#fff" stroke-width="2" opacity=".25"/>
+</svg>
