@@ -79,7 +79,8 @@ Write-Host "🚀 Nasazování kódu..." -ForegroundColor Yellow
 appwrite functions createDeployment `
     --functionId "svj-portal-web" `
     --entrypoint "src/SVJPortal.Web/SVJPortal.Web.csproj" `
-    --code "."
+    --code "." `
+    --activate true
 
 Write-Host "✅ Nasazení dokončeno!" -ForegroundColor Green
 Write-Host "🌐 Aplikace bude dostupná na: https://$($env:APPWRITE_PROJECT_ID).appwrite.org" -ForegroundColor Cyan

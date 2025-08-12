@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SVJPortal.Web.Models.Interfaces;
 using SVJPortal.Web.Data;
-using SVJPortal.Web.Models.Entities;
+using SVJPortal.Web.Models;
 using SVJPortal.Web.Models.ViewModels;
 
 namespace SVJPortal.Web.Services
@@ -17,17 +17,17 @@ namespace SVJPortal.Web.Services
             _auditService = auditService;
         }
 
-        public async Task<IEnumerable<Employee>> GetEmployeesBySVJAsync(int svjId)
+    public async Task<IEnumerable<Employee>> GetEmployeesBySVJAsync(int svjId)
         {
             return await _context.Employees
-                .Include(e => e.SVJ)
-                .Where(e => e.SVJId == svjId && e.JeAktivni)
-                .OrderBy(e => e.Prijmeni)
-                .ThenBy(e => e.Jmeno)
+        .Include(e => e.SVJ)
+        .Where(e => e.SVJId == svjId && e.JeAktivni)
+        .OrderBy(e => e.Prijmeni)
+        .ThenBy(e => e.Jmeno)
                 .ToListAsync();
         }
 
-        public async Task<Employee> GetEmployeeByIdAsync(int id)
+    public async Task<Employee?> GetEmployeeByIdAsync(int id)
         {
             return await _context.Employees
                 .Include(e => e.SVJ)
@@ -35,19 +35,19 @@ namespace SVJPortal.Web.Services
                 .FirstOrDefaultAsync(e => e.Id == id);
         }
 
-        public async Task<Employee> CreateEmployeeAsync(Employee employee)
+    public async Task<Employee> CreateEmployeeAsync(Employee employee)
         {
             employee.DatumNastupu = employee.DatumNastupu == DateTime.MinValue ? DateTime.Now : employee.DatumNastupu;
             
             _context.Employees.Add(employee);
             await _context.SaveChangesAsync();
             
-            await _auditService.LogChangeAsync("Employee", employee.Id.ToString(), "CREATE", null, employee, "System");
+        await _auditService.LogChangeAsync("Employee", employee.Id.ToString(), "CREATE", null, employee, "System");
             
             return employee;
         }
 
-        public async Task<Employee> UpdateEmployeeAsync(Employee employee)
+    public async Task<Employee> UpdateEmployeeAsync(Employee employee)
         {
             var oldEmployee = await _context.Employees.AsNoTracking().FirstOrDefaultAsync(e => e.Id == employee.Id);
             
@@ -59,7 +59,7 @@ namespace SVJPortal.Web.Services
             return employee;
         }
 
-        public async Task<bool> DeleteEmployeeAsync(int id)
+    public async Task<bool> DeleteEmployeeAsync(int id)
         {
             var employee = await _context.Employees.FindAsync(id);
             if (employee != null)
@@ -75,7 +75,7 @@ namespace SVJPortal.Web.Services
             return false;
         }
 
-        public async Task<bool> TerminateEmployeeAsync(int id, DateTime terminationDate)
+    public async Task<bool> TerminateEmployeeAsync(int id, DateTime terminationDate)
         {
             var employee = await _context.Employees.FindAsync(id);
             if (employee != null)
@@ -94,7 +94,7 @@ namespace SVJPortal.Web.Services
             return false;
         }
 
-        public async Task<IEnumerable<Employee>> GetActiveEmployeesAsync()
+    public async Task<IEnumerable<Employee>> GetActiveEmployeesAsync()
         {
             return await _context.Employees
                 .Include(e => e.SVJ)
@@ -105,7 +105,7 @@ namespace SVJPortal.Web.Services
                 .ToListAsync();
         }
 
-        public async Task<bool> ExistsByRodneCisloAsync(string rodneCislo)
+    public async Task<bool> ExistsByRodneCisloAsync(string rodneCislo)
         {
             return await _context.Employees.AnyAsync(e => e.RodneCislo == rodneCislo && e.JeAktivni);
         }

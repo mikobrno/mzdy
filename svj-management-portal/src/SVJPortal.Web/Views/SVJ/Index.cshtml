@@ -1,4 +1,4 @@
-@model SVJIndexViewModel
+@model SVJPortal.Web.Models.ViewModels.SVJIndexViewModel
 @{
     ViewData["Title"] = "Správa SVJ";
 }
@@ -47,7 +47,7 @@
                         <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                             Celkem zaměstnanců
                         </div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.SVJs.Sum(s => s.Employees.Count)</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.SVJs.Sum(s => s.Zamestnanci.Count)</div>
                     </div>
                     <div class="col-auto">
                         <i class="fas fa-users fa-2x text-gray-300"></i>
@@ -65,7 +65,7 @@
                         <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
                             Aktivní zaměstnanci
                         </div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.SVJs.Sum(s => s.Employees.Count(e => e.DatumUkonceni == null))</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.SVJs.Sum(s => s.Zamestnanci.Count(e => e.DatumUkonceni == null))</div>
                     </div>
                     <div class="col-auto">
                         <i class="fas fa-user-check fa-2x text-gray-300"></i>
@@ -83,7 +83,7 @@
                         <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                             Nevyplacené mzdy
                         </div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.SVJs.Sum(s => s.Payrolls.Count(p => p.StatusVyplaceni != StatusVyplaceni.Vyplaceno))</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.SVJs.Sum(s => s.Mzdy.Count(p => p.Stav != SVJPortal.Web.Models.StavMzdyEnum.Vyplacena))</div>
                     </div>
                     <div class="col-auto">
                         <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
@@ -130,13 +130,7 @@
                         <small class="text-muted">IČO:</small>
                         <strong>@svj.ICO</strong>
                     </div>
-                    @if (!string.IsNullOrEmpty(svj.Mesto))
-                    {
-                        <div class="mb-2">
-                            <small class="text-muted">Město:</small>
-                            @svj.Mesto
-                        </div>
-                    }
+                    @* Model SVJ nemá Mesto v této verzi *@
                     @if (!string.IsNullOrEmpty(svj.Email))
                     {
                         <div class="mb-2">
@@ -147,16 +141,16 @@
                     
                     <div class="row text-center mt-3">
                         <div class="col-4">
-                            <div class="text-primary font-weight-bold">@svj.Employees.Count(e => e.DatumUkonceni == null)</div>
+                            <div class="text-primary font-weight-bold">@svj.Zamestnanci.Count(e => e.DatumUkonceni == null)</div>
                             <small class="text-muted">Zaměstnanci</small>
                         </div>
                         <div class="col-4">
-                            <div class="text-success font-weight-bold">@svj.Payrolls.Count(p => p.MesicRok.Month == DateTime.Now.Month && p.MesicRok.Year == DateTime.Now.Year)</div>
+                            <div class="text-success font-weight-bold">@svj.Mzdy.Count(p => p.Mesic == DateTime.Now.Month && p.Rok == DateTime.Now.Year)</div>
                             <small class="text-muted">Mzdy tento měsíc</small>
                         </div>
                         <div class="col-4">
                             @{
-                                var pendingPayrolls = svj.Payrolls.Count(p => p.StatusVyplaceni != StatusVyplaceni.Vyplaceno);
+                                var pendingPayrolls = svj.Mzdy.Count(p => p.Stav != SVJPortal.Web.Models.StavMzdyEnum.Vyplacena);
                             }
                             <div class="@(pendingPayrolls > 0 ? "text-warning" : "text-success") font-weight-bold">@pendingPayrolls</div>
                             <small class="text-muted">Nevyplacené</small>

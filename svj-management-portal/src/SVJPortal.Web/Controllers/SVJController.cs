@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using SVJPortal.Web.Models.Entities;
+using SVJPortal.Web.Models;
 using SVJPortal.Web.Models.Interfaces;
 using SVJPortal.Web.Data;
 using SVJPortal.Web.Models.ViewModels;
@@ -25,8 +25,8 @@ namespace SVJPortal.Web.Controllers
         public async Task<IActionResult> Index()
         {
             var svjs = await _context.SVJs
-                .Include(s => s.Employees)
-                .Include(s => s.Payrolls)
+                .Include(s => s.Zamestnanci)
+                .Include(s => s.Mzdy)
                 .OrderBy(s => s.Nazev)
                 .ToListAsync();
 
@@ -41,8 +41,8 @@ namespace SVJPortal.Web.Controllers
         public async Task<IActionResult> Details(int id)
         {
             var svj = await _context.SVJs
-                .Include(s => s.Employees)
-                .Include(s => s.Payrolls)
+                .Include(s => s.Zamestnanci)
+                .Include(s => s.Mzdy)
                     .ThenInclude(p => p.Employee)
                 .FirstOrDefaultAsync(s => s.Id == id);
 
@@ -55,11 +55,11 @@ namespace SVJPortal.Web.Controllers
             var viewModel = new SVJDetailViewModel
             {
                 SVJ = svj,
-                RecentPayrolls = svj.Payrolls
-                    .OrderByDescending(p => p.MesicRok)
+                PosledniMzdy = svj.Mzdy
+                    .OrderByDescending(p => new DateTime(p.Rok, p.Mesic, 1))
                     .Take(10)
                     .ToList(),
-                ActiveEmployees = svj.Employees
+                Zamestnanci = svj.Zamestnanci
                     .Where(e => e.DatumUkonceni == null)
                     .OrderBy(e => e.Prijmeni)
                     .ThenBy(e => e.Jmeno)
@@ -95,7 +95,6 @@ namespace SVJPortal.Web.Controllers
                     }
 
                     svj.DatumVytvoreni = DateTime.Now;
-                    svj.VytvoriloUser = User.Identity?.Name ?? "System";
 
                     _context.SVJs.Add(svj);
                     await _context.SaveChangesAsync();
@@ -167,17 +166,12 @@ namespace SVJPortal.Web.Controllers
                     // Aktualizace hodnot
                     existingSvj.Nazev = svj.Nazev;
                     existingSvj.ICO = svj.ICO;
-                    existingSvj.DIC = svj.DIC;
+                    // DIC not present on model; ignore if not used
                     existingSvj.Adresa = svj.Adresa;
-                    existingSvj.Mesto = svj.Mesto;
-                    existingSvj.PSC = svj.PSC;
+                    // Mesto/PSC not defined in this model version
                     existingSvj.Email = svj.Email;
-                    existingSvj.Telefon = svj.Telefon;
                     existingSvj.IBAN = svj.IBAN;
-                    existingSvj.Banka = svj.Banka;
-                    existingSvj.DataSchrankaID = svj.DataSchrankaID;
-                    existingSvj.WebStranka = svj.WebStranka;
-                    existingSvj.Poznamky = svj.Poznamky;
+                    existingSvj.DatovaSchranka = svj.DatovaSchranka;
 
                     await _context.SaveChangesAsync();
 

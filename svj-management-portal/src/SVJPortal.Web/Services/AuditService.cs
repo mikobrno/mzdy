@@ -15,7 +15,7 @@ namespace SVJPortal.Web.Services
             _context = context;
         }
 
-        public async Task LogChangeAsync(string tableName, string recordId, string action, object oldValues, object newValues, string userId)
+    public async Task LogChangeAsync(string tableName, string recordId, string action, object oldValues, object newValues, string userId)
         {
             var auditLog = new AuditLog
             {
@@ -32,7 +32,7 @@ namespace SVJPortal.Web.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task<IEnumerable<AuditLog>> GetAuditLogsAsync(string tableName = null, string recordId = null, DateTime? from = null, DateTime? to = null)
+    public async Task<IEnumerable<AuditLog>> GetAuditLogsAsync(string tableName = null, string recordId = null, DateTime? from = null, DateTime? to = null)
         {
             var query = _context.AuditLogs.AsQueryable();
 
@@ -59,6 +59,13 @@ namespace SVJPortal.Web.Services
                 .Where(a => a.NazevTabulky == entityType && a.IdZaznamu == entityId.ToString())
                 .OrderByDescending(a => a.DatumZmeny)
                 .ToListAsync();
+        }
+
+        public Task LogAsync(string action, string message, string userName, string recordId)
+        {
+            // Store generic message into AuditLog with tableName derived from action prefix
+            var table = action.Split('_').FirstOrDefault() ?? "SYSTEM";
+            return LogChangeAsync(table, recordId, action, null, new { message }, userName ?? "System");
         }
     }
 }

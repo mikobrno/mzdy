@@ -1,53 +1,86 @@
-using SVJPortal.Web.Models.Entities;
+using SVJPortal.Web.Models;
+using SVJPortal.Web.Models.ViewModels;
 
 namespace SVJPortal.Web.Models.Interfaces
 {
     public interface ISVJService
     {
-        Task<IEnumerable<SVJ>> GetAllAsync();
-        Task<SVJ?> GetByIdAsync(int id);
-        Task<SVJ> CreateAsync(SVJ svj);
-        Task<SVJ> UpdateAsync(SVJ svj);
-        Task DeleteAsync(int id);
+        Task<IEnumerable<SVJ>> GetAllSVJsAsync();
+        Task<SVJ?> GetSVJByIdAsync(int id);
+        Task<SVJ?> GetSVJByIcoAsync(string ico);
+        Task<SVJ> CreateSVJAsync(SVJ svj);
+        Task<SVJ> UpdateSVJAsync(SVJ svj);
+        Task<bool> DeleteSVJAsync(int id);
+
+        Task<DashboardViewModel> GetDashboardDataAsync();
+        Task<SVJDetailViewModel?> GetSVJDetailAsync(int id);
+        Task<bool> ExistsByIcoAsync(string ico);
+
+        // Used by controller actions
+        Task<object> GetSVJStatsAsync(int id);
+        Task<byte[]> GenerateMonthlyReportAsync(int svjId, int year, int month);
     }
     
     public interface IEmployeeService
     {
-        Task<IEnumerable<Employee>> GetAllAsync();
-        Task<IEnumerable<Employee>> GetBySVJIdAsync(int svjId);
-        Task<Employee?> GetByIdAsync(int id);
-        Task<Employee> CreateAsync(Employee employee);
-        Task<Employee> UpdateAsync(Employee employee);
-        Task DeleteAsync(int id);
+        Task<IEnumerable<Employee>> GetEmployeesBySVJAsync(int svjId);
+        Task<Employee?> GetEmployeeByIdAsync(int id);
+        Task<Employee> CreateEmployeeAsync(Employee employee);
+        Task<Employee> UpdateEmployeeAsync(Employee employee);
+        Task<bool> DeleteEmployeeAsync(int id);
+
+        Task<bool> TerminateEmployeeAsync(int id, DateTime terminationDate);
+        Task<IEnumerable<Employee>> GetActiveEmployeesAsync();
+        Task<bool> ExistsByRodneCisloAsync(string rodneCislo);
     }
     
     public interface IPayrollService
     {
-        Task<IEnumerable<Payroll>> GetAllAsync();
-        Task<IEnumerable<Payroll>> GetBySVJIdAsync(int svjId);
-        Task<Payroll?> GetByIdAsync(int id);
-        Task<Payroll> CreateAsync(Payroll payroll);
-        Task<Payroll> UpdateAsync(Payroll payroll);
-        Task DeleteAsync(int id);
-        Task<Payroll> ApproveAsync(int id);
-        Task<decimal> CalculateTotalSalaryAsync(int payrollId);
+        Task<IEnumerable<Payroll>> GetPayrollsAsync(int svjId, int year, int month);
+        Task<IEnumerable<Payroll>> GetPayrollsBySVJIdAsync(int svjId);
+        Task<Payroll?> GetPayrollByIdAsync(int id);
+        Task<Payroll> CreatePayrollAsync(Payroll payroll);
+        Task<Payroll> UpdatePayrollAsync(Payroll payroll);
+        Task<bool> DeletePayrollAsync(int id);
+
+        Task<bool> GenerateMonthlyPayrollsAsync(int year, int month);
+        Task<bool> ApprovePayrollsAsync(int svjId, int year, int month, string approvedBy);
+
+        Task<PayrollEditViewModel> CalculatePayrollAsync(PayrollEditViewModel model);
+        Task<byte[]> GeneratePayrollSlipPdfAsync(int payrollId);
+        Task<byte[]> GenerateBankTransferFileAsync(int svjId, int year, int month);
+        Task<byte[]> GenerateCsszXmlAsync(int svjId, int year, int month);
+        Task<byte[]> GenerateHealthInsuranceXmlAsync(int svjId, int year, int month);
     }
     
     public interface IAuditService
     {
-        Task LogAsync(string action, string entityType, int entityId, string? details = null);
-        Task<IEnumerable<AuditLog>> GetLogsAsync(DateTime? from = null, DateTime? to = null);
+        Task LogChangeAsync(string tableName, string recordId, string action, object oldValues, object newValues, string userId);
+        Task<IEnumerable<AuditLog>> GetAuditLogsAsync(string tableName = null, string recordId = null, DateTime? from = null, DateTime? to = null);
+        Task<IEnumerable<AuditLog>> GetEntityAuditLogsAsync(int entityId, string entityType);
+
+        // Simplified wrapper used by controllers
+        Task LogAsync(string action, string message, string userName, string recordId);
     }
     
     public interface IEmailService
     {
-        Task SendEmailAsync(string to, string subject, string body);
-        Task SendPayrollNotificationAsync(Payroll payroll);
+        Task<bool> SendEmailAsync(string to, string subject, string body, List<EmailAttachment> attachments = null);
+        Task<bool> SendEmailFromTemplateAsync(int templateId, int svjId, Dictionary<string, string> variables = null);
+        Task<EmailTemplate> CreateTemplateAsync(EmailTemplate template);
+        Task<EmailTemplate> UpdateTemplateAsync(EmailTemplate template);
+        Task<IEnumerable<EmailTemplate>> GetTemplatesAsync(int? svjId = null);
+        Task<string> ProcessTemplateAsync(string template, Dictionary<string, string> variables);
+        Task<List<EmailAttachment>> LoadCloudAttachmentsAsync(int svjId);
     }
     
     public interface IBankApiService
     {
-        Task<bool> ValidateBankAccountAsync(string accountNumber, string bankCode);
-        Task<decimal> GetAccountBalanceAsync(string accountNumber, string bankCode);
+        Task<bool> SendFioTransferAsync(byte[] transferFile);
+        Task<bool> SendCeskaSporitelnaTransferAsync(byte[] transferFile);
+        Task<bool> SendCsobTransferAsync(byte[] transferFile);
+        Task<bool> SendKomercniBankaTransferAsync(byte[] transferFile);
+        Task<bool> SendRaiffeisenBankTransferAsync(byte[] transferFile);
+        Task<decimal> GetAccountBalanceAsync(string bankCode, string accountNumber);
     }
 }

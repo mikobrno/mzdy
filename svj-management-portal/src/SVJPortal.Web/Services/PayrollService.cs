@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SVJPortal.Web.Models.Interfaces;
 using SVJPortal.Web.Data;
-using SVJPortal.Web.Models.Entities;
+using SVJPortal.Web.Models;
 using SVJPortal.Web.Models.ViewModels;
 using System.Globalization;
 using System.Text;
@@ -31,7 +31,18 @@ namespace SVJPortal.Web.Services
                 .ToListAsync();
         }
 
-        public async Task<Payroll> GetPayrollByIdAsync(int id)
+        public async Task<IEnumerable<Payroll>> GetPayrollsBySVJIdAsync(int svjId)
+        {
+            return await _context.Payrolls
+                .Include(p => p.Employee)
+                .Include(p => p.SVJ)
+                .Where(p => p.SVJId == svjId)
+                .OrderByDescending(p => p.Rok)
+                .ThenByDescending(p => p.Mesic)
+                .ToListAsync();
+        }
+
+    public async Task<Payroll?> GetPayrollByIdAsync(int id)
         {
             return await _context.Payrolls
                 .Include(p => p.Employee)
@@ -39,7 +50,7 @@ namespace SVJPortal.Web.Services
                 .FirstOrDefaultAsync(p => p.Id == id);
         }
 
-        public async Task<Payroll> CreatePayrollAsync(Payroll payroll)
+    public async Task<Payroll> CreatePayrollAsync(Payroll payroll)
         {
             payroll.DatumVytvoreni = DateTime.Now;
             _context.Payrolls.Add(payroll);
@@ -50,7 +61,7 @@ namespace SVJPortal.Web.Services
             return payroll;
         }
 
-        public async Task<Payroll> UpdatePayrollAsync(Payroll payroll)
+    public async Task<Payroll> UpdatePayrollAsync(Payroll payroll)
         {
             var oldPayroll = await _context.Payrolls.AsNoTracking().FirstOrDefaultAsync(p => p.Id == payroll.Id);
             
@@ -62,7 +73,7 @@ namespace SVJPortal.Web.Services
             return payroll;
         }
 
-        public async Task<bool> DeletePayrollAsync(int id)
+    public async Task<bool> DeletePayrollAsync(int id)
         {
             var payroll = await _context.Payrolls.FindAsync(id);
             if (payroll != null)
@@ -158,7 +169,7 @@ namespace SVJPortal.Web.Services
             return true;
         }
 
-        public async Task<byte[]> GeneratePayrollSlipPdfAsync(int payrollId)
+    public async Task<byte[]> GeneratePayrollSlipPdfAsync(int payrollId)
         {
             var payroll = await GetPayrollByIdAsync(payrollId);
             if (payroll == null) return null;
@@ -170,7 +181,7 @@ namespace SVJPortal.Web.Services
             return Encoding.UTF8.GetBytes(pdfContent);
         }
 
-        public async Task<byte[]> GenerateBankTransferFileAsync(int svjId, int year, int month)
+    public async Task<byte[]> GenerateBankTransferFileAsync(int svjId, int year, int month)
         {
             var payrolls = await GetPayrollsAsync(svjId, year, month);
             var approvedPayrolls = payrolls.Where(p => p.Stav == StavMzdyEnum.Schvalena).ToList();
@@ -181,7 +192,7 @@ namespace SVJPortal.Web.Services
             return Encoding.UTF8.GetBytes(xml);
         }
 
-        public async Task<byte[]> GenerateCsszXmlAsync(int svjId, int year, int month)
+    public async Task<byte[]> GenerateCsszXmlAsync(int svjId, int year, int month)
         {
             var payrolls = await GetPayrollsAsync(svjId, year, month);
             var approvedPayrolls = payrolls.Where(p => p.Stav == StavMzdyEnum.Schvalena).ToList();
@@ -192,7 +203,7 @@ namespace SVJPortal.Web.Services
             return Encoding.UTF8.GetBytes(xml);
         }
 
-        public async Task<byte[]> GenerateHealthInsuranceXmlAsync(int svjId, int year, int month)
+    public async Task<byte[]> GenerateHealthInsuranceXmlAsync(int svjId, int year, int month)
         {
             var payrolls = await GetPayrollsAsync(svjId, year, month);
             var approvedPayrolls = payrolls.Where(p => p.Stav == StavMzdyEnum.Schvalena).ToList();

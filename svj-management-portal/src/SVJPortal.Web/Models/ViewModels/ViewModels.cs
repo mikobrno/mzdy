@@ -14,6 +14,11 @@ namespace SVJPortal.Web.Models.ViewModels
         public int NeodeslanychtEmailu { get; set; }
     }
     
+    public class SVJIndexViewModel
+    {
+        public List<SVJ> SVJs { get; set; } = new List<SVJ>();
+    }
+    
     public class SVJCardViewModel
     {
         public int Id { get; set; }

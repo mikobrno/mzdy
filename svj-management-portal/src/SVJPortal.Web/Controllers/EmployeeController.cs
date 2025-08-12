@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using SVJPortal.Web.Models;
-using SVJPortal.Web.Services;
+using SVJPortal.Web.Models.Interfaces;
 using System.Threading.Tasks;
 
 namespace SVJPortal.Web.Controllers
@@ -9,15 +9,15 @@ namespace SVJPortal.Web.Controllers
     [ApiController]
     public class EmployeeController : ControllerBase
     {
-        private readonly EmployeeService _employeeService;
+    private readonly IEmployeeService _employeeService;
 
-        public EmployeeController(EmployeeService employeeService)
+    public EmployeeController(IEmployeeService employeeService)
         {
             _employeeService = employeeService;
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<Employee>> GetEmployee(int id)
+    public async Task<ActionResult<Employee>> GetEmployee(int id)
         {
             var employee = await _employeeService.GetEmployeeByIdAsync(id);
             if (employee == null)
@@ -30,7 +30,7 @@ namespace SVJPortal.Web.Controllers
         [HttpPost]
         public async Task<ActionResult<Employee>> AddEmployee(Employee employee)
         {
-            var createdEmployee = await _employeeService.AddEmployeeAsync(employee);
+            var createdEmployee = await _employeeService.CreateEmployeeAsync(employee);
             return CreatedAtAction(nameof(GetEmployee), new { id = createdEmployee.Id }, createdEmployee);
         }
 

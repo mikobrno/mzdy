@@ -3,7 +3,6 @@ using SVJPortal.Web.Models.Interfaces;
 using SVJPortal.Web.Data;
 using SVJPortal.Web.Models;
 using SVJPortal.Web.Models.ViewModels;
-using SVJPortal.Web.Models.Entities;
 
 namespace SVJPortal.Web.Services
 {
@@ -18,25 +17,25 @@ namespace SVJPortal.Web.Services
             _auditService = auditService;
         }
 
-        public async Task<IEnumerable<SVJ>> GetAllSVJsAsync()
+    public async Task<IEnumerable<SVJ>> GetAllSVJsAsync()
         {
             return await _context.SVJs
                 .Where(s => s.JeAktivni)
-                .Include(s => s.Zamestnanci.Where(e => e.JeAktivni))
+        .Include(s => s.Zamestnanci.Where(e => e.JeAktivni))
                 .OrderBy(s => s.Nazev)
                 .ToListAsync();
         }
 
-        public async Task<SVJ> GetSVJByIdAsync(int id)
+    public async Task<SVJ?> GetSVJByIdAsync(int id)
         {
             return await _context.SVJs
                 .Include(s => s.Zamestnanci.Where(e => e.JeAktivni))
                 .Include(s => s.Mzdy)
                 .Include(s => s.EmailSablony)
-                .FirstOrDefaultAsync(s => s.Id == id && s.JeAktivni);
+        .FirstOrDefaultAsync(s => s.Id == id && s.JeAktivni);
         }
 
-        public async Task<SVJ> GetSVJByIcoAsync(string ico)
+    public async Task<SVJ?> GetSVJByIcoAsync(string ico)
         {
             return await _context.SVJs
                 .FirstOrDefaultAsync(s => s.ICO == ico && s.JeAktivni);
@@ -81,7 +80,7 @@ namespace SVJPortal.Web.Services
             return false;
         }
 
-        public async Task<DashboardViewModel> GetDashboardDataAsync()
+    public async Task<DashboardViewModel> GetDashboardDataAsync()
         {
             var svjs = await GetAllSVJsAsync();
             var currentYear = DateTime.Now.Year;
@@ -119,7 +118,7 @@ namespace SVJPortal.Web.Services
             return viewModel;
         }
 
-        public async Task<SVJDetailViewModel> GetSVJDetailAsync(int id)
+    public async Task<SVJDetailViewModel?> GetSVJDetailAsync(int id)
         {
             var svj = await GetSVJByIdAsync(id);
             if (svj == null) return null;
@@ -139,7 +138,7 @@ namespace SVJPortal.Web.Services
             return await _context.SVJs.AnyAsync(s => s.ICO == ico && s.JeAktivni);
         }
 
-        private async Task<MzdyStavViewModel[]> GetPayrollStatusForYearAsync(int svjId, int year)
+    private async Task<MzdyStavViewModel[]> GetPayrollStatusForYearAsync(int svjId, int year)
         {
             var result = new MzdyStavViewModel[12];
             var payrolls = await _context.Payrolls
@@ -162,6 +161,19 @@ namespace SVJPortal.Web.Services
             }
 
             return result;
+        }
+
+        public Task<object> GetSVJStatsAsync(int id)
+        {
+            // Minimal placeholder implementation; expand as needed
+            return Task.FromResult<object>(new { Id = id, Employees = _context.Employees.Count(e => e.SVJId == id && e.JeAktivni) });
+        }
+
+        public Task<byte[]> GenerateMonthlyReportAsync(int svjId, int year, int month)
+        {
+            // Placeholder: return simple PDF-like bytes or CSV as needed
+            var content = $"SVJ Report {svjId} - {month:00}/{year}";
+            return Task.FromResult(System.Text.Encoding.UTF8.GetBytes(content));
         }
     }
 }

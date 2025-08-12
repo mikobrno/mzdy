@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using SVJPortal.Web.Models;
-using SVJPortal.Web.Services;
+using SVJPortal.Web.Models.Interfaces;
 using System.Threading.Tasks;
 
 namespace SVJPortal.Web.Controllers
@@ -9,9 +9,9 @@ namespace SVJPortal.Web.Controllers
     [ApiController]
     public class PayrollController : ControllerBase
     {
-        private readonly PayrollService _payrollService;
+    private readonly IPayrollService _payrollService;
 
-        public PayrollController(PayrollService payrollService)
+    public PayrollController(IPayrollService payrollService)
         {
             _payrollService = payrollService;
         }
