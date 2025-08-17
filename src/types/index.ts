@@ -9,6 +9,12 @@ export interface SVJ {
   contactEmail: string
   quickDescription: string
   reportDeliveryMethod: 'manager' | 'client'
+  isActive?: boolean
+  registryData?: {
+    officialName: string
+    verificationDate: Date
+    isVerified: boolean
+  }
   createdAt: Date
   updatedAt: Date
 }
@@ -28,6 +34,7 @@ export interface Employee {
   executions: Execution[]
   hasPinkDeclaration: boolean
   healthInsurance: string
+  socialInsurance?: string
   isActive: boolean
   startDate: Date
   endDate?: Date
@@ -134,4 +141,32 @@ export interface DashboardStats {
   completedSalariesThisMonth: number
   pendingCampaigns: number
   recentActivities: AuditLog[]
+  userNote?: string
+}
+
+export interface VariableGroup {
+  category: string
+  variables: string[]
+}
+
+export interface GlobalSettings {
+  id: string
+  companyName: string
+  contactEmail: string
+  smtpSettings: {
+    host: string
+    port: number
+    secure: boolean
+    username: string
+    password: string
+  }
+  defaultVariables: {
+    [key: string]: string
+  }
+  taxSettings: {
+    currentYear: number
+    taxRates: {
+      [key: string]: number
+    }
+  }
 }

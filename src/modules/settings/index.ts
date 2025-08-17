@@ -1,0 +1,7 @@
+export { default as SettingsMainPage } from '@/pages/settings-main'
+export { default as EmailSettingsPage } from '@/pages/settings-email'
+export { default as TaxSettingsPage } from '@/pages/settings-taxes'
+export { default as UserSettingsPage } from '@/pages/settings-users'
+export { default as ApiSettingsPage } from '@/pages/settings-api'
+export { default as SecuritySettingsPage } from '@/pages/settings-security'
+export { default as CompanySettingsPage } from '@/pages/settings-company'

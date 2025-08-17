@@ -1,13 +1,20 @@
-import { useQuery } from '@tanstack/react-query'
-import { Building2, Users, Calculator, Mail, TrendingUp, AlertCircle } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Building2, Users, Calculator, Mail, TrendingUp, AlertCircle, StickyNote, Save } from 'lucide-react'
 import StatsCard from '@/components/dashboard/stats-card'
 import SVJOverviewCard from '@/components/dashboard/svj-overview-card'
 import { apiService } from '@/services/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { useAuth } from '@/hooks/use-auth'
 
 export default function Dashboard() {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+  const [dashboardNote, setDashboardNote] = useState('')
+  const [isEditingNote, setIsEditingNote] = useState(false)
+
   const { data: svjList, isLoading: svjLoading } = useQuery({
     queryKey: ['svj-list'],
     queryFn: apiService.getSVJList
@@ -17,6 +24,18 @@ export default function Dashboard() {
     queryKey: ['dashboard-stats'],
     queryFn: apiService.getDashboardStats
   })
+
+  const updateNoteMutation = useMutation({
+    mutationFn: (note: string) => apiService.updateUserNote(note),
+    onSuccess: () => {
+      setIsEditingNote(false)
+      queryClient.invalidateQueries({ queryKey: ['user'] })
+    }
+  })
+
+  const handleSaveNote = () => {
+    updateNoteMutation.mutate(dashboardNote)
+  }
 
   const currentMonth = new Date().toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' })
 
@@ -98,6 +117,51 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       )}
+
+      {/* Uživatelská poznámka */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <StickyNote className="h-5 w-5" />
+              <span>Moje poznámka</span>
+            </div>
+            {isEditingNote ? (
+              <div className="flex space-x-2">
+                <Button size="sm" onClick={handleSaveNote} disabled={updateNoteMutation.isPending}>
+                  <Save className="h-4 w-4 mr-1" />
+                  Uložit
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setIsEditingNote(false)}>
+                  Zrušit
+                </Button>
+              </div>
+            ) : (
+              <Button size="sm" variant="outline" onClick={() => setIsEditingNote(true)}>
+                Upravit
+              </Button>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isEditingNote ? (
+            <textarea
+              value={dashboardNote}
+              onChange={(e) => setDashboardNote(e.target.value)}
+              placeholder="Sem můžete zapsat rychlé poznámky, připomínky nebo to-do seznam..."
+              className="w-full h-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            />
+          ) : (
+            <div className="min-h-[4rem] text-gray-700">
+              {stats?.userNote || dashboardNote || (
+                <span className="text-gray-400 italic">
+                  Klikněte na "Upravit" pro přidání poznámky...
+                </span>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* SVJ Overview Grid */}
       <div className="space-y-6">
