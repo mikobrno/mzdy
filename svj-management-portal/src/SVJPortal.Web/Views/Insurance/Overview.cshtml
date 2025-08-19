@@ -1,0 +1,27 @@
+@model IEnumerable<SVJPortal.Web.Models.Employee>
+
+<h2>Přehled zaměstnanců podle pojišťovny</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Pojišťovna</th>
+            <th>Jméno</th>
+            <th>Adresa</th>
+            <th>Telefon</th>
+            <th>Email</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var employee in Model)
+        {
+            <tr>
+                <td>@employee.Pojistovna</td>
+                <td>@employee.FirstName @employee.LastName</td>
+                <td>@employee.Address</td>
+                <td>@employee.Phone</td>
+                <td>@employee.Email</td>
+            </tr>
+        }
+    </tbody>
+</table>

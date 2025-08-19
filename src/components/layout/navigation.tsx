@@ -58,6 +58,12 @@ const navigationItems = [
     href: '/communication-campaigns',
     icon: Mail
   },
+  // Administrace
+  {
+    title: 'Zdravotní pojišťovny',
+    href: '/health-insurance-admin',
+    icon: Shield
+  },
   {
     title: 'Nastavení',
     href: '/settings',

@@ -56,5 +56,12 @@ namespace SVJPortal.Web.Controllers
             }
             return NoContent();
         }
+
+        [HttpGet("InsuranceOverview")]
+        public async Task<IActionResult> InsuranceOverview()
+        {
+            var employees = await _employeeService.GetAllEmployeesAsync();
+            return View("Overview", employees);
+        }
     }
 }
