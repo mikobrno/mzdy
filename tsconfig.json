@@ -25,7 +25,11 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+
+    /* Jest and Testing Library */
+    "types": ["jest"],
+    "typeRoots": ["./node_modules/@types"]
   },
   "include": [
   "src",

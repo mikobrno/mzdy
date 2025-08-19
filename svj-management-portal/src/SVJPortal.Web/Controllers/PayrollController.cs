@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using SVJPortal.Web.Models;
 using SVJPortal.Web.Models.Interfaces;
 using System.Threading.Tasks;
+using System.Text;
+using System.IO;
 
 namespace SVJPortal.Web.Controllers
 {
@@ -52,6 +54,61 @@ namespace SVJPortal.Web.Controllers
         {
             await _payrollService.DeletePayrollAsync(id);
             return NoContent();
+        }
+
+        [HttpGet("ExportCsv")]
+        public async Task<IActionResult> ExportCsv()
+        {
+            var payrolls = await _payrollService.GetAllPayrollsAsync();
+
+            var csv = new StringBuilder();
+            csv.AppendLine("Rok,Měsíc,Hrubá mzda,Čistá mzda,Stav");
+
+            foreach (var payroll in payrolls)
+            {
+                csv.AppendLine($"{payroll.Rok},{payroll.NazevMesice},{payroll.HrubaMzda},{payroll.CistaMzda},{payroll.Stav}");
+            }
+
+            return File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", "payrolls.csv");
+        }
+
+        [HttpGet("ExportPdf")]
+        public async Task<IActionResult> ExportPdf()
+        {
+            var payrolls = await _payrollService.GetAllPayrollsAsync();
+
+            using var memoryStream = new MemoryStream();
+            using (var writer = new StreamWriter(memoryStream, Encoding.UTF8, leaveOpen: true))
+            {
+                writer.WriteLine("Seznam mezd");
+                writer.WriteLine("Rok\tMěsíc\tHrubá mzda\tČistá mzda\tStav");
+
+                foreach (var payroll in payrolls)
+                {
+                    writer.WriteLine($"{payroll.Rok}\t{payroll.NazevMesice}\t{payroll.HrubaMzda}\t{payroll.CistaMzda}\t{payroll.Stav}");
+                }
+            }
+
+            memoryStream.Position = 0;
+            return File(memoryStream.ToArray(), "application/pdf", "payrolls.pdf");
+        }
+
+        [HttpPost("Recalculate/{id}")]
+        public async Task<IActionResult> Recalculate(int id)
+        {
+            var payroll = await _payrollService.GetPayrollByIdAsync(id);
+            if (payroll == null)
+            {
+                return NotFound();
+            }
+
+            // Mock calculation logic
+            payroll.HrubaMzda += 1000; // Example adjustment
+            payroll.CistaMzda = payroll.HrubaMzda - payroll.DanZPrijmu - payroll.SocialniPojisteni - payroll.ZdravotniPojisteni;
+
+            await _payrollService.UpdatePayrollAsync(payroll);
+
+            return RedirectToAction("Index");
         }
     }
 }

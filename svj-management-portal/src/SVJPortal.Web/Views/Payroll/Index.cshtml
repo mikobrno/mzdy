@@ -1,0 +1,33 @@
+@model IEnumerable<SVJPortal.Web.Models.Payroll>
+
+<h2>Seznam mezd</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Rok</th>
+            <th>Měsíc</th>
+            <th>Hrubá mzda</th>
+            <th>Čistá mzda</th>
+            <th>Stav</th>
+            <th>Akce</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var payroll in Model)
+        {
+            <tr>
+                <td>@payroll.Rok</td>
+                <td>@payroll.NazevMesice</td>
+                <td>@payroll.HrubaMzda</td>
+                <td>@payroll.CistaMzda</td>
+                <td>@payroll.Stav</td>
+                <td>
+                    <a href="/Payroll/Edit/@payroll.Id" class="btn btn-primary">Upravit</a>
+                    <a href="/Payroll/Delete/@payroll.Id" class="btn btn-danger">Smazat</a>
+                    <a href="/Payroll/Recalculate/@payroll.Id" class="btn btn-warning">Přepočítat</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
