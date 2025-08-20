@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiService } from '@/services/api';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -117,15 +119,27 @@ const getStatusInfo = (status: string) => {
 };
 
 export default function PayrollWorkflow() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [selectedMonth, setSelectedMonth] = useState(1);
   const [selectedYear, setSelectedYear] = useState(2026);
+
+  // Queries pro payroll workflow data z Nhost
+  const { data: payrollCycles = [], isLoading: cyclesLoading } = useQuery({
+    queryKey: ['payroll-cycles', selectedMonth, selectedYear],
+    queryFn: () => apiService.getPayrollCycles(selectedYear, selectedMonth)
+  });
+
+  const { data: svjPayrolls = [], isLoading: payrollsLoading } = useQuery({
+    queryKey: ['svj-payrolls', selectedMonth, selectedYear],
+    queryFn: () => apiService.getSVJPayrolls(selectedYear, selectedMonth)
+  });
+
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [settingsTarget, setSettingsTarget] = useState<null | typeof mockSVJPayrolls[number]>(null);
+  const [settingsTarget, setSettingsTarget] = useState<any>(null);
 
-  const currentCycle = mockPayrollCycles.find(c => c.month === selectedMonth && c.year === selectedYear);
-  const svjPayrolls = mockSVJPayrolls.filter(p => p.month === selectedMonth && p.year === selectedYear);
+  const currentCycle = payrollCycles.find((c: any) => c.month === selectedMonth && c.year === selectedYear);
 
   const handleGenerateMonthlyPayrolls = () => {
     // Simulace automatického generování mezd

@@ -39,85 +39,6 @@ type PayrollEmployee = {
   salaryRecord?: Omit<SalaryRecord, 'status'> & { status: string }
 }
 
-// Mock data pro mzdy konkrétního měsíce a SVJ
-const mockPayrollData = {
-  svjId: '1',
-  year: 2026,
-  month: 1,
-  status: 'ready_for_approval',
-  employees: [
-    {
-      id: '1',
-      firstName: 'Marie',
-      lastName: 'Svobodová',
-      contractType: 'committee_member',
-      salary: 15000,
-      healthInsurance: '111',
-      salaryRecord: {
-        id: '1',
-        employeeId: '1',
-        svjId: '1',
-        year: 2026,
-        month: 1,
-        grossSalary: 15000,
-        netSalary: 12500,
-        healthInsurance: 675,
-        socialInsurance: 975,
-        tax: 850,
-        status: 'prepared',
-        createdBy: 'admin',
-        createdAt: new Date('2026-01-05')
-      }
-    },
-    {
-      id: '2', 
-      firstName: 'Petr',
-      lastName: 'Novák',
-      contractType: 'dpp',
-      salary: 8000,
-      healthInsurance: '201',
-      salaryRecord: {
-        id: '2',
-        employeeId: '2',
-        svjId: '1',
-        year: 2026,
-        month: 1,
-        grossSalary: 8000,
-        netSalary: 7200,
-        healthInsurance: 360,
-        socialInsurance: 0,
-        tax: 440,
-        status: 'prepared',
-        createdBy: 'admin',
-        createdAt: new Date('2026-01-05')
-      }
-    },
-    {
-      id: '3',
-      firstName: 'Jana',
-      lastName: 'Nováková',
-      contractType: 'committee_member',
-      salary: 12000,
-      healthInsurance: '111',
-      salaryRecord: {
-        id: '3',
-        employeeId: '3',
-        svjId: '1',
-        year: 2026,
-        month: 1,
-        grossSalary: 12000,
-        netSalary: 10100,
-        healthInsurance: 540,
-        socialInsurance: 780,
-        tax: 580,
-        status: 'prepared',
-        createdBy: 'admin',
-        createdAt: new Date('2026-01-05')
-      }
-    }
-  ]
-}
-
 export default function PayrollMonthly() {
   const { svjId, year, month } = useParams<{ svjId: string; year: string; month: string }>()
   const navigate = useNavigate()
@@ -140,14 +61,10 @@ export default function PayrollMonthly() {
     enabled: !!svjId
   })
 
-  // Mock query pro payroll data
+  // Query pro payroll data z Nhost
   const { data: payrollData, isLoading } = useQuery({
     queryKey: ['payroll', svjId, year, month],
-    queryFn: async () => {
-      // Simulace API volání
-      await new Promise(resolve => setTimeout(resolve, 800))
-      return mockPayrollData
-    },
+    queryFn: () => apiService.getPayrollSummary(svjId!, parseInt(year!), parseInt(month!)),
     enabled: !!svjId && !!year && !!month
   })
 
@@ -160,10 +77,7 @@ export default function PayrollMonthly() {
   })
 
   const approveSalariesMutation = useMutation({
-    mutationFn: () => {
-      // Mock API call
-      return new Promise(resolve => setTimeout(resolve, 1000))
-    },
+    mutationFn: () => apiService.updatePayrollStatus(svjId!, parseInt(year!), parseInt(month!), 'approved'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payroll', svjId, year, month] })
     }

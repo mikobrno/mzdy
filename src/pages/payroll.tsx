@@ -1,11 +1,14 @@
 import React, { Suspense, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { useQuery as useApolloQuery } from '@apollo/client'
+import { GET_SVJ_WITH_PAYROLLS } from '@/lib/graphql-queries'
 import { apiService } from '@/services/api'
-import { Building2, Calendar, CheckCircle2, Clock, Search, TrendingUp } from 'lucide-react'
+import { Building2, Calendar, CheckCircle2, Clock, Search, TrendingUp, Trash2 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 
 type PeriodStatus = 'draft' | 'prepared' | 'approved' | 'paid'
 
@@ -15,6 +18,11 @@ function deterministicStatus(id: string, year: number, month: number): PeriodSta
   return ['draft', 'prepared', 'approved', 'paid'][mod] as PeriodStatus
 }
 
+const months = [
+  'Leden', 'Únor', 'Březen', 'Duben', 'Květen', 'Červen',
+  'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec'
+]
+
 export default function PayrollPage() {
   const navigate = useNavigate()
   const now = new Date()
@@ -22,6 +30,8 @@ export default function PayrollPage() {
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<'all' | PeriodStatus>('all')
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth())
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear())
 
   const { data: svjList, isLoading } = useQuery({
     queryKey: ['svj-list'],
@@ -29,13 +39,52 @@ export default function PayrollPage() {
     staleTime: 1000 * 60 * 5,
   })
 
+  // Skutečný GraphQL dotaz pro payroll data
+  const { data: payrollData, loading: payrollLoading } = useApolloQuery(GET_SVJ_WITH_PAYROLLS, {
+    variables: { year: selectedYear, month: selectedMonth + 1 },
+    fetchPolicy: 'cache-and-network'
+  })
+
   const enriched = useMemo(() => {
-    return (svjList || []).map((svj) => ({
-      ...svj,
-      periodStatus: deterministicStatus(svj.id, year, month) as PeriodStatus,
-      employeesCount: Math.floor((parseInt(svj.id, 10) || 1) * 3) % 12 + 2,
-    }))
-  }, [svjList, year, month])
+    if (!svjList) return []
+    
+    return svjList.map((svj) => {
+      // Najdi payroll data pro toto SVJ
+      const svjPayrollData = payrollData?.svjs?.find((p: any) => p.id === svj.id)
+      const employeesCount = svjPayrollData?.employees_aggregate?.aggregate?.count || 0
+      const payrolls = svjPayrollData?.payrolls || []
+      
+      // Určení stavu zpracování mezd
+      let periodStatus: PeriodStatus = 'draft'
+      let statusText = 'Nezpracováno'
+      
+      if (payrolls.length > 0) {
+        const approvedCount = payrolls.filter((p: any) => p.status === 'approved').length
+        const processingCount = payrolls.filter((p: any) => p.status === 'processing').length
+        
+        if (approvedCount === payrolls.length) {
+          periodStatus = 'approved'
+          statusText = 'Schváleno'
+        } else if (processingCount > 0 || approvedCount > 0) {
+          periodStatus = 'prepared'
+          statusText = 'V přípravě'
+        } else {
+          periodStatus = 'draft'
+          statusText = 'Návrh'
+        }
+      } else {
+        periodStatus = deterministicStatus(svj.id, year, month) as PeriodStatus
+      }
+      
+      return {
+        ...svj,
+        employeesCount,
+        periodStatus,
+        statusText,
+        payrolls
+      }
+    })
+  }, [svjList, payrollData, year, month, selectedYear, selectedMonth])
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
@@ -48,17 +97,24 @@ export default function PayrollPage() {
 
   const counts = useMemo(() => {
     const total = enriched.length
+    const draft = enriched.filter((s) => s.periodStatus === 'draft').length
     const prepared = enriched.filter((s) => s.periodStatus === 'prepared').length
     const approved = enriched.filter((s) => s.periodStatus === 'approved').length
     const paid = enriched.filter((s) => s.periodStatus === 'paid').length
-    return { total, prepared, approved, paid }
+    return { total, draft, prepared, approved, paid }
   }, [enriched])
+
+  // Skutečná data pro tabulku místo mock dat
+  const svjListData = enriched.map((svj) => ({
+    ...svj,
+    status: svj.statusText
+  }))
 
   const openMonthly = (svjId: string) => {
     navigate(`/payroll/${svjId}/${year}/${month}`)
   }
 
-  if (isLoading) {
+  if (isLoading || payrollLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
@@ -239,6 +295,65 @@ export default function PayrollPage() {
               </Card>
             ))
           )}
+        </div>
+
+        {/* Processing Section */}
+        <div className="mt-8">
+          <h2 className="text-2xl font-bold mb-4">Zpracování mezd</h2>
+
+          <div className="flex space-x-4 mb-6">
+            <div>
+              <label className="block text-sm font-medium mb-1">Měsíc</label>
+              <select 
+                value={selectedMonth} 
+                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                className="w-40 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                title="Vyberte měsíc"
+              >
+                {months.map((month, index) => (
+                  <option key={index} value={index}>{month}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Rok</label>
+              <select 
+                value={selectedYear} 
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                className="w-40 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                title="Vyberte rok"
+              >
+                {Array.from({ length: 5 }).map((_, i) => {
+                  const y = now.getFullYear() - 2 + i
+                  return (
+                    <option key={y} value={y}>{y}</option>
+                  )
+                })}
+              </select>
+            </div>
+          </div>
+
+          <table className="table-auto w-full border-collapse border border-gray-300">
+            <thead>
+              <tr>
+                <th className="border border-gray-300 px-4 py-2">Název SVJ</th>
+                <th className="border border-gray-300 px-4 py-2">Stav zpracování mezd</th>
+                <th className="border border-gray-300 px-4 py-2">Akce</th>
+              </tr>
+            </thead>
+            <tbody>
+              {svjListData.map((svj) => (
+                <tr key={svj.id}>
+                  <td className="border border-gray-300 px-4 py-2">{svj.name}</td>
+                  <td className="border border-gray-300 px-4 py-2">{svj.status}</td>
+                  <td className="border border-gray-300 px-4 py-2">
+                    <Link to={`/payroll/${svj.id}/${selectedYear}/${selectedMonth + 1}`} className="text-blue-500 hover:underline">Zpracovat mzdy</Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </Suspense>

@@ -185,8 +185,8 @@ export default function Dashboard() {
               <SVJOverviewCard
                 key={svj.id}
                 svj={svj}
-                completedMonths={Math.floor(Math.random() * 12) + 1} // Mock data
-                totalEmployees={Math.floor(Math.random() * 8) + 2} // Mock data
+                completedMonths={svj.employeeCount || 0}
+                totalEmployees={svj.monthlyPayrollCount || 0}
               />
             ))}
           </div>

@@ -1,4 +1,6 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom'
+import { AuthProvider } from '@/hooks/use-auth'
+import { ToastProvider } from '@/components/ui/toast'
 import Navigation from '@/components/layout/navigation'
 import Dashboard from '@/pages/dashboard'
 import SVJDetail from '@/pages/svj-detail'
@@ -34,9 +36,7 @@ import PdfTemplatesPage from '@/pages/pdf-templates'
 import PdfGeneratorPage from '@/pages/pdf-generator'
 import PdfHubPage from '@/pages/pdf'
 import EmailComposePage from '@/pages/email-compose'
-// auth provider is applied in main.tsx; no local provider here
-
-// Placeholder pages for other routes
+import HealthInsuranceAdminPage from '@/pages/health-insurance-admin'
 
 function EmployeesPageLegacy() {
   return (
@@ -46,8 +46,6 @@ function EmployeesPageLegacy() {
     </div>
   )
 }
-
- 
 
 function CommunicationPage() {
   return (
@@ -67,59 +65,76 @@ function SettingsPage() {
   )
 }
 
-export default function App() {
+function Layout() {
   return (
-    <div className="min-h-screen gradient-bg">
-      <Navigation />
-      
-      {/* Main content */}
-      <main className="ml-64 min-h-screen">
-        <div className="container mx-auto p-8">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/svj" element={<SVJListPage />} />
-            <Route path="/svj/new" element={<SVJNewPage />} />
-            <Route path="/svj/:id" element={<SVJDetail />} />
-            <Route path="/employees" element={<EmployeesPage />} />
-            <Route path="/employees/new" element={<EmployeeNewPage />} />
-            <Route path="/employees/:id" element={<EmployeeDetailPage />} />
-            <Route path="/employees/:id/edit" element={<EmployeeEditPage />} />
-            <Route path="/payroll" element={<PayrollPage />} />
-            <Route path="/payroll/:svjId/:year/:month" element={<PayrollMonthly />} />
-            {/* Backward compatibility redirects */}
-            <Route path="/salaries/:svjId/:year/:month" element={<PayrollMonthly />} />
-            <Route path="/salaries/*" element={<PayrollPage />} />
-            <Route path="/payroll-workflow" element={<PayrollPage />} />
-            <Route path="/templates" element={<Templates />} />
-            <Route path="/templates/new" element={<TemplateEditor />} />
-            <Route path="/templates/:id/edit" element={<TemplateEditor />} />
-            <Route path="/dynamic-variables" element={<DynamicVariables />} />
-            <Route path="/communication-campaigns" element={<CommunicationCampaigns />} />
-            <Route path="/communication/*" element={<CommunicationPage />} />
-            <Route path="/pdf" element={<PdfHubPage />} />
-            {/* Backward compatibility */}
-            <Route path="/pdf-templates" element={<PdfHubPage />} />
-            <Route path="/pdf-generator" element={<PdfHubPage />} />
-            <Route path="/email-compose" element={<EmailComposePage />} />
-            <Route path="/profile" element={<ProfileSettings />} />
-            <Route path="/notifications" element={<NotificationCenter />} />
-            <Route path="/settings" element={<SettingsMain />} />
-            <Route path="/settings/email" element={<EmailSettings />} />
-            <Route path="/settings/taxes" element={<TaxSettings />} />
-            <Route path="/settings/users" element={<UserSettings />} />
-            <Route path="/settings/api" element={<ApiSettings />} />
-            <Route path="/settings/security" element={<SecuritySettings />} />
-            <Route path="/settings/company" element={<CompanySettings />} />
-            <Route path="/settings/documents" element={<DocumentsSettings />} />
-            <Route path="/settings/backup" element={<BackupSettings />} />
-            <Route path="/settings/notifications" element={<NotificationsSettings />} />
-            <Route path="/settings/appearance" element={<AppearanceSettings />} />
-            <Route path="/settings/system" element={<SystemSettings />} />
-            <Route path="/settings/billing" element={<BillingSettings />} />
-            <Route path="/settings/*" element={<SettingsPage />} />
-          </Routes>
+    <AuthProvider>
+      <ToastProvider>
+        <div className="min-h-screen gradient-bg">
+          <Navigation />
+          <main className="ml-64 min-h-screen">
+            <div className="container mx-auto p-8">
+              <Outlet />
+            </div>
+          </main>
         </div>
-      </main>
-    </div>
+      </ToastProvider>
+    </AuthProvider>
   )
+}
+
+const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <Layout />,
+    children: [
+      { index: true, element: <Dashboard /> },
+      { path: "svj", element: <SVJListPage /> },
+      { path: "svj/new", element: <SVJNewPage /> },
+      { path: "svj/:id", element: <SVJDetail /> },
+      { path: "employees", element: <EmployeesPage /> },
+      { path: "employees/new", element: <EmployeeNewPage /> },
+      { path: "employees/:id", element: <EmployeeDetailPage /> },
+      { path: "employees/:id/edit", element: <EmployeeEditPage /> },
+      { path: "payroll", element: <PayrollPage /> },
+      { path: "payroll/:svjId/:year/:month", element: <PayrollMonthly /> },
+      { path: "salaries/:svjId/:year/:month", element: <PayrollMonthly /> },
+      { path: "salaries/*", element: <PayrollPage /> },
+      { path: "payroll-workflow", element: <PayrollPage /> },
+      { path: "templates", element: <Templates /> },
+      { path: "templates/new", element: <TemplateEditor /> },
+      { path: "templates/:id/edit", element: <TemplateEditor /> },
+      { path: "dynamic-variables", element: <DynamicVariables /> },
+      { path: "communication-campaigns", element: <CommunicationCampaigns /> },
+      { path: "communication/*", element: <CommunicationPage /> },
+      { path: "pdf", element: <PdfHubPage /> },
+      { path: "pdf-templates", element: <PdfHubPage /> },
+      { path: "pdf-generator", element: <PdfHubPage /> },
+      { path: "email-compose", element: <EmailComposePage /> },
+      { path: "health-insurance-admin", element: <HealthInsuranceAdminPage /> },
+      { path: "profile", element: <ProfileSettings /> },
+      { path: "notifications", element: <NotificationCenter /> },
+      { path: "settings", element: <SettingsMain /> },
+      { path: "settings/email", element: <EmailSettings /> },
+      { path: "settings/taxes", element: <TaxSettings /> },
+      { path: "settings/users", element: <UserSettings /> },
+      { path: "settings/api", element: <ApiSettings /> },
+      { path: "settings/security", element: <SecuritySettings /> },
+      { path: "settings/company", element: <CompanySettings /> },
+      { path: "settings/documents", element: <DocumentsSettings /> },
+      { path: "settings/backup", element: <BackupSettings /> },
+      { path: "settings/notifications", element: <NotificationsSettings /> },
+      { path: "settings/appearance", element: <AppearanceSettings /> },
+      { path: "settings/system", element: <SystemSettings /> },
+      { path: "settings/billing", element: <BillingSettings /> },
+      { path: "settings/*", element: <SettingsPage /> }
+    ]
+  }
+], {
+  future: {
+    v7_relativeSplatPath: true
+  }
+});
+
+export default function App() {
+  return <RouterProvider router={router} />;
 }
