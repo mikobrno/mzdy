@@ -122,7 +122,7 @@ export default function SVJDetail() {
   const pendingPayrolls = payrolls?.filter(p => p.status === 'draft' || p.status === 'prepared').length || 0
   const completedPayrolls = payrolls?.filter(p => p.status === 'paid').length || 0
 
-  // Mock mzdový přehled po měsících
+  // Mzdový přehled po měsících - odvozený z reálných dat
   const monthlyPayrollStatus = Array.from({ length: 12 }, (_, i) => {
     const month = i + 1
     const monthPayrolls = payrolls?.filter(p => p.month === month) || []

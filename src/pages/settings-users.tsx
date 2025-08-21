@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -20,9 +21,66 @@ import {
   UserCheck
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { nhostApiService } from '@/services/nhost-api';
 
-// Mock data pro uživatele
-const users = [
+export default function UserSettings() {
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [inviteData, setInviteData] = useState({
+    email: '',
+    role: 'viewer',
+    svjAccess: [],
+    customPermissions: []
+  });
+  const queryClient = useQueryClient();
+
+  const { data: users = [], isLoading: usersLoading } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => nhostApiService.getUsers(),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { data: roles = [] } = useQuery({
+    queryKey: ['user-roles'],
+    queryFn: () => nhostApiService.getUserRoles(),
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const { data: permissions = [] } = useQuery({
+    queryKey: ['user-permissions'],
+    queryFn: () => nhostApiService.getUserPermissions(),
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const { data: svjList = [] } = useQuery({
+    queryKey: ['svj-list'],
+    queryFn: () => nhostApiService.getSVJList(),
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const inviteUserMutation = useMutation({
+    mutationFn: (data: any) => nhostApiService.inviteUser(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setShowInviteModal(false);
+      setInviteData({ email: '', role: 'viewer', svjAccess: [], customPermissions: [] });
+    }
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: (userId: string) => nhostApiService.deleteUser(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    }
+  });
+
+  const resendInviteMutation = useMutation({
+    mutationFn: (userId: string) => nhostApiService.resendInvite(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    }
+  });
   {
     id: '1',
     name: 'Marie Svobodová',

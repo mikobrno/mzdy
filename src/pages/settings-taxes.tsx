@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -15,9 +16,86 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { nhostApiService } from '@/services/nhost-api';
 
-// Mock data pro daňové sazby
-const taxSettings = {
+export default function TaxSettings() {
+  const [isUpdating, setIsUpdating] = useState(false);
+  const queryClient = useQueryClient();
+
+  const { data: taxSettings, isLoading } = useQuery({
+    queryKey: ['tax-settings'],
+    queryFn: () => nhostApiService.getTaxSettings(),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { data: insuranceCompanies } = useQuery({
+    queryKey: ['insurance-companies'],
+    queryFn: () => nhostApiService.getInsuranceCompanies(),
+    staleTime: 1000 * 60 * 15,
+  });
+
+  const [formData, setFormData] = useState(taxSettings || {
+    incomeTax: {
+      rate: 15,
+      basicDeduction: 2570,
+      childDeduction: 1367,
+      disabilityDeduction: 1345,
+      lastUpdated: '2025-01-01',
+      validFrom: '2025-01-01'
+    },
+    socialInsurance: {
+      employeeRate: 6.5,
+      employerRate: 24.8,
+      maxBase: 1935552,
+      lastUpdated: '2025-01-01'
+    },
+    healthInsurance: {
+      employeeRate: 4.5,
+      employerRate: 9,
+      minBase: 17300,
+      maxBase: 193556,
+      lastUpdated: '2025-01-01'
+    },
+    minimumWage: {
+      hourly: 118.1,
+      monthly: 20000,
+      lastUpdated: '2025-01-01'
+    },
+    mealVouchers: {
+      maxTaxFree: 200,
+      employerContribution: 55,
+      lastUpdated: '2025-01-01'
+    },
+    autoUpdate: {
+      enabled: true,
+      source: 'Ministerstvo financí',
+      lastCheck: new Date().toISOString()
+    }
+  });
+
+  const updateTaxRatesMutation = useMutation({
+    mutationFn: () => nhostApiService.updateTaxRates(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tax-settings'] });
+      setIsUpdating(false);
+    },
+    onError: () => {
+      setIsUpdating(false);
+    }
+  });
+
+  const saveSettingsMutation = useMutation({
+    mutationFn: (data: any) => nhostApiService.saveTaxSettings(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tax-settings'] });
+    }
+  });
+
+  React.useEffect(() => {
+    if (taxSettings) {
+      setFormData(taxSettings);
+    }
+  }, [taxSettings]);
   incomeTax: {
     rate: 15, // %
     basicDeduction: 2570, // Kč měsíčně

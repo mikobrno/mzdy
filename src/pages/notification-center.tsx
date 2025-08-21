@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -29,131 +30,80 @@ import {
   EyeOff
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
-// Mock data pro notifikace
-const notifications = [
-  {
-    id: 1,
-    type: 'security',
-    title: 'Neúspěšný pokus o přihlášení',
-    message: 'Zaznamenaný neúspěšný pokus o přihlášení z IP adresy 203.0.113.15',
-    timestamp: '2025-01-13T14:25:00',
-    isRead: false,
-    priority: 'high',
-    category: 'Zabezpečení',
-    user: 'Systém',
-    icon: Shield,
-    actions: ['Prošetřit', 'Označit jako vyřešené']
-  },
-  {
-    id: 2,
-    type: 'payroll',
-    title: 'Mzdy připraveny ke schválení',
-    message: 'Mzdové výpočty pro SVJ Nové Město jsou připraveny ke kontrole a schválení',
-    timestamp: '2025-01-13T13:45:00',
-    isRead: false,
-    priority: 'high',
-    category: 'Mzdová agenda',
-    user: 'Jana Novotná',
-    icon: Calculator,
-    actions: ['Zobrazit výpočty', 'Schválit']
-  },
-  {
-    id: 3,
-    type: 'system',
-    title: 'Automatická záloha dokončena',
-    message: 'Denní záloha systému byla úspěšně dokončena. Velikost zálohy: 2.4 GB',
-    timestamp: '2025-01-13T06:00:00',
-    isRead: true,
-    priority: 'medium',
-    category: 'Systém',
-    user: 'Systém',
-    icon: Archive,
-    actions: ['Zobrazit detaily']
-  },
-  {
-    id: 4,
-    type: 'user',
-    title: 'Nový uživatel čeká na schválení',
-    message: 'Petr Svoboda požádal o přístup k systému s rolí "Mzdový účetní"',
-    timestamp: '2025-01-13T11:30:00',
-    isRead: false,
-    priority: 'medium',
-    category: 'Uživatelé',
-    user: 'Petr Svoboda',
-    icon: Users,
-    actions: ['Schválit', 'Odmítnout', 'Zobrazit profil']
-  },
-  {
-    id: 5,
-    type: 'api',
-    title: 'Chyba API připojení',
-    message: 'Připojení k ČSSZ API selhalo. Automatické pokusy o obnovení neúspěšné',
-    timestamp: '2025-01-13T10:15:00',
-    isRead: true,
-    priority: 'high',
-    category: 'API integrace',
-    user: 'Systém',
-    icon: Globe,
-    actions: ['Znovu připojit', 'Zkontrolovat nastavení']
-  },
-  {
-    id: 6,
-    type: 'document',
-    title: 'Výplatní pásky vygenerovány',
-    message: 'Výplatní pásky pro měsíc leden 2025 byly úspěšně vygenerovány a odeslány',
-    timestamp: '2025-01-13T09:20:00',
-    isRead: true,
-    priority: 'low',
-    category: 'Dokumenty',
-    user: 'Systém',
-    icon: FileText,
-    actions: ['Zobrazit dokumenty']
-  },
-  {
-    id: 7,
-    type: 'deadline',
-    title: 'Blíží se termín podání přehledů',
-    message: 'Do termínu podání přehledů sociálního pojištění zbývají 3 dny',
-    timestamp: '2025-01-13T08:00:00',
-    isRead: false,
-    priority: 'medium',
-    category: 'Termíny',
-    user: 'Systém',
-    icon: Calendar,
-    actions: ['Zobrazit přehledy', 'Připravit podání']
-  }
-];
-
-// Mock data pro nastavení notifikací
-const notificationSettings = {
-  channels: {
-    email: true,
-    push: true,
-    sms: false,
-    inApp: true
-  },
-  categories: {
-    security: { enabled: true, priority: 'high', channels: ['email', 'push', 'sms'] },
-    payroll: { enabled: true, priority: 'high', channels: ['email', 'push'] },
-    system: { enabled: true, priority: 'medium', channels: ['email'] },
-    users: { enabled: true, priority: 'medium', channels: ['email', 'push'] },
-    api: { enabled: true, priority: 'high', channels: ['email', 'push'] },
-    documents: { enabled: true, priority: 'low', channels: ['email'] },
-    deadlines: { enabled: true, priority: 'high', channels: ['email', 'push', 'sms'] }
-  },
-  schedule: {
-    quietHours: { enabled: true, start: '22:00', end: '07:00' },
-    weekends: { enabled: false },
-    frequency: 'immediate' // immediate, hourly, daily
-  }
-};
+import { nhostApiService } from '@/services/nhost-api';
 
 export default function NotificationCenter() {
-  const [activeTab, setActiveTab] = useState('notifications');
+  const [selectedNotification, setSelectedNotification] = useState(null);
   const [filter, setFilter] = useState('all');
+  const [showSettings, setShowSettings] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const queryClient = useQueryClient();
+
+  const { data: notifications = [], isLoading } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => nhostApiService.getNotifications(),
+    staleTime: 1000 * 60 * 2,
+  });
+
+  const { data: notificationSettings } = useQuery({
+    queryKey: ['notification-settings'],
+    queryFn: () => nhostApiService.getNotificationSettings(),
+  });
+
+  // Použijeme buď načtená data nebo výchozí hodnoty
+  const settings = notificationSettings || {
+    channels: {
+      email: true,
+      push: true,
+      sms: false,
+      inApp: true
+    },
+    categories: {
+      payroll: { enabled: true, priority: 'high', channels: ['email', 'push'] },
+      system: { enabled: true, priority: 'medium', channels: ['push'] },
+      user: { enabled: true, priority: 'low', channels: ['push'] },
+      security: { enabled: true, priority: 'high', channels: ['email', 'sms', 'push'] }
+    },
+    schedule: {
+      quietHours: { enabled: true, start: '22:00', end: '07:00' },
+      weekends: { enabled: false },
+      frequency: 'immediate'
+    }
+  };
+
+  const markAsReadMutation = useMutation({
+    mutationFn: (notificationId: string) => nhostApiService.markNotificationAsRead(notificationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    }
+  });
+
+  const deleteNotificationMutation = useMutation({
+    mutationFn: (notificationId: string) => nhostApiService.deleteNotification(notificationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      setSelectedNotification(null);
+    }
+  });
+
+  const updateSettingsMutation = useMutation({
+    mutationFn: (settings: any) => nhostApiService.updateNotificationSettings(settings),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notification-settings'] });
+    }
+  });
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const filteredNotifications = notifications.filter(notification => {
+    if (filter === 'unread' && notification.isRead) return false;
+    if (filter === 'high' && notification.priority !== 'high') return false;
+    if (searchTerm && !notification.title.toLowerCase().includes(searchTerm.toLowerCase()) && 
+        !notification.message.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    return true;
+  });
+
+  const [activeTab, setActiveTab] = useState('notifications');
   const [selectedNotifications, setSelectedNotifications] = useState<number[]>([]);
-  const [settings, setSettings] = useState(notificationSettings);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -204,7 +154,7 @@ export default function NotificationCenter() {
   };
 
   const handleMarkAsRead = (ids: number[]) => {
-    console.log('Označuji jako přečtené:', ids);
+    ids.forEach(id => markAsReadMutation.mutate(id.toString()));
     setSelectedNotifications([]);
   };
 
@@ -214,31 +164,33 @@ export default function NotificationCenter() {
   };
 
   const handleDelete = (ids: number[]) => {
-    console.log('Mažu notifikace:', ids);
+    ids.forEach(id => deleteNotificationMutation.mutate(id.toString()));
     setSelectedNotifications([]);
   };
 
   const updateChannelSetting = (channel: string, enabled: boolean) => {
-    setSettings(prev => ({
-      ...prev,
+    const newSettings = {
+      ...settings,
       channels: {
-        ...prev.channels,
+        ...settings.channels,
         [channel]: enabled
       }
-    }));
+    };
+    updateSettingsMutation.mutate(newSettings);
   };
 
   const updateCategorySetting = (category: string, field: string, value: any) => {
-    setSettings(prev => ({
-      ...prev,
+    const newSettings = {
+      ...settings,
       categories: {
-        ...prev.categories,
+        ...settings.categories,
         [category]: {
-          ...prev.categories[category as keyof typeof prev.categories],
+          ...settings.categories[category as keyof typeof settings.categories],
           [field]: value
         }
       }
-    }));
+    };
+    updateSettingsMutation.mutate(newSettings);
   };
 
   return (
@@ -411,6 +363,7 @@ export default function NotificationCenter() {
                     <div className="flex items-start gap-4">
                       <input
                         type="checkbox"
+                        aria-label={`Vybrat notifikaci: ${notification.title}`}
                         checked={isSelected}
                         onChange={() => handleSelectNotification(notification.id)}
                         className="mt-1"
@@ -504,6 +457,7 @@ export default function NotificationCenter() {
                         </div>
                       </div>
                       <button
+                        aria-label={`Přepnout ${channel.label}`}
                         onClick={() => updateChannelSetting(channel.key, !settings.channels[channel.key as keyof typeof settings.channels])}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                           settings.channels[channel.key as keyof typeof settings.channels] ? 'bg-blue-600' : 'bg-gray-200'
@@ -530,7 +484,7 @@ export default function NotificationCenter() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {Object.entries(settings.categories).map(([category, categorySettings]) => (
+                {Object.entries(settings.categories).map(([category, categorySettings]: [string, any]) => (
                   <div key={category} className="p-4 border border-gray-200 rounded-lg">
                     <div className="flex items-center justify-between mb-3">
                       <div>
@@ -540,6 +494,7 @@ export default function NotificationCenter() {
                         </p>
                       </div>
                       <button
+                        aria-label={`Přepnout notifikace pro kategorii ${category}`}
                         onClick={() => updateCategorySetting(category, 'enabled', !categorySettings.enabled)}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                           categorySettings.enabled ? 'bg-blue-600' : 'bg-gray-200'
@@ -558,6 +513,7 @@ export default function NotificationCenter() {
                             Priorita
                           </label>
                           <select
+                            aria-label={`Priorita pro kategorii ${category}`}
                             value={categorySettings.priority}
                             onChange={(e) => updateCategorySetting(category, 'priority', e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
@@ -606,6 +562,7 @@ export default function NotificationCenter() {
                     </div>
                   </div>
                   <button
+                    aria-label="Přepnout tichý režim"
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                       settings.schedule.quietHours.enabled ? 'bg-blue-600' : 'bg-gray-200'
                     }`}
@@ -622,6 +579,7 @@ export default function NotificationCenter() {
                     <div className="text-sm text-gray-500">Omezit notifikace o víkendech</div>
                   </div>
                   <button
+                    aria-label="Přepnout omezení víkendových notifikací"
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                       settings.schedule.weekends.enabled ? 'bg-blue-600' : 'bg-gray-200'
                     }`}
@@ -637,6 +595,7 @@ export default function NotificationCenter() {
                     Frekvence doručování
                   </label>
                   <select
+                    aria-label="Frekvence doručování notifikací"
                     value={settings.schedule.frequency}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >

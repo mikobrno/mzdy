@@ -283,38 +283,3 @@ export class SVJService {
     OfflineService.saveToCache(`${this.CACHE_KEY}_statistics`, null)
   }
 }
-
-// Mock implementace pro development
-export class MockSVJService {
-  static async getSVJList(params: SVJListParams = {}) {
-    // Simulace delay
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    const mockData: SVJ[] = [
-      {
-        id: '1',
-        name: 'SVJ Zahradní město',
-        ico: '12345678',
-        address: 'Zahradní 123, Praha 6',
-        bankAccount: '1234567890/0100',
-        dataBoxId: 'abc123',
-        contactPerson: 'Jan Novák',
-        contactEmail: 'jan.novak@email.com',
-        quickDescription: 'Moderní bytový dům s 45 jednotkami',
-        reportDeliveryMethod: 'manager',
-        createdAt: new Date('2023-01-15'),
-        updatedAt: new Date('2024-03-10')
-      },
-      // ... další mock data
-    ]
-
-    return {
-      data: mockData.slice(0, params.limit || 10),
-      total: mockData.length,
-      page: params.page || 1,
-      limit: params.limit || 10
-    }
-  }
-
-  // ... další mock metody
-}
