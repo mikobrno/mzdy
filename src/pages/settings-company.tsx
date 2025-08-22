@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiService } from '@/services/api';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -22,82 +20,114 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-// Funkce pro mapování stavů certifikátů
-const getCertificationStatus = (status: string) => {
-  switch (status) {
-    case 'active':
-      return { label: 'Platné', color: 'bg-green-100 text-green-800', icon: CheckCircle };
-    case 'expiring':
-      return { label: 'Končí platnost', color: 'bg-yellow-100 text-yellow-800', icon: AlertTriangle };
-    case 'expired':
-      return { label: 'Prošlé', color: 'bg-red-100 text-red-800', icon: AlertTriangle };
-    default:
-      return { label: 'Neznámé', color: 'bg-gray-100 text-gray-800', icon: AlertTriangle };
-  }
+// Mock data pro firemní nastavení
+const companyData = {
+  basicInfo: {
+    name: 'SVJ Management s.r.o.',
+    tradingName: 'SVJ Management',
+    registrationNumber: '12345678',
+    taxNumber: 'CZ12345678',
+    vatNumber: '',
+    establishedDate: '2020-01-15',
+    legalForm: 'Společnost s ručením omezeným'
+  },
+  address: {
+    street: 'Václavské náměstí 123',
+    city: 'Praha',
+    postalCode: '110 00',
+    country: 'Česká republika',
+    region: 'Hlavní město Praha'
+  },
+  contact: {
+    phone: '+420 123 456 789',
+    fax: '+420 123 456 790',
+    email: 'info@svjmanagement.cz',
+    website: 'https://www.svjmanagement.cz'
+  },
+  bankAccounts: [
+    {
+      id: 1,
+      bankName: 'Komerční banka',
+      accountNumber: '123456789/0100',
+      iban: 'CZ6501000000000123456789',
+      swift: 'KOMBCZPP',
+      currency: 'CZK',
+      purpose: 'Provozní účet',
+      isDefault: true
+    },
+    {
+      id: 2,
+      bankName: 'Česká spořitelna',
+      accountNumber: '987654321/0800',
+      iban: 'CZ6508000000000987654321',
+      swift: 'GIBACZPX',
+      currency: 'CZK',
+      purpose: 'Rezervní účet',
+      isDefault: false
+    }
+  ],
+  documents: {
+    logo: 'company-logo.png',
+    signature: 'signature.png',
+    stamp: 'company-stamp.png',
+    certificate: 'trade-license.pdf',
+    articles: 'articles-of-association.pdf'
+  },
+  certifications: [
+    {
+      id: 1,
+      name: 'ISO 9001:2015',
+      issuer: 'Bureau Veritas',
+      issueDate: '2024-03-15',
+      expiryDate: '2027-03-14',
+      status: 'active',
+      certificateNumber: 'CZ-BV-001234'
+    },
+    {
+      id: 2,
+      name: 'ISO 14001:2015',
+      issuer: 'SGS',
+      issueDate: '2024-06-01',
+      expiryDate: '2027-05-31',
+      status: 'active',
+      certificateNumber: 'CZ-SGS-005678'
+    }
+  ]
 };
 
 export default function CompanySettings() {
-  const queryClient = useQueryClient();
+  const [data, setData] = useState(companyData);
   const [activeTab, setActiveTab] = useState('basic');
   const [isEditing, setIsEditing] = useState(false);
 
-  // Query pro firemní nastavení z Nhost
-  const { data: companyData, isLoading } = useQuery({
-    queryKey: ['company-settings'],
-    queryFn: () => apiService.getCompanySettings()
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: (updateData: any) => apiService.updateCompanySettings(updateData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['company-settings'] });
-      setIsEditing(false);
-    }
-  });
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2 text-gray-600">Načítání nastavení společnosti...</span>
-      </div>
-    );
-  }
-
   const updateBasicInfo = (field: string, value: string) => {
-    if (companyData) {
-      updateMutation.mutate({
-        ...companyData,
-        basicInfo: {
-          ...companyData.basicInfo,
-          [field]: value
-        }
-      });
-    }
+    setData(prev => ({
+      ...prev,
+      basicInfo: {
+        ...prev.basicInfo,
+        [field]: value
+      }
+    }));
   };
 
   const updateAddress = (field: string, value: string) => {
-    if (companyData) {
-      updateMutation.mutate({
-        ...companyData,
-        address: {
-          ...companyData.address,
-          [field]: value
-        }
-      });
-    }
+    setData(prev => ({
+      ...prev,
+      address: {
+        ...prev.address,
+        [field]: value
+      }
+    }));
   };
 
   const updateContact = (field: string, value: string) => {
-    if (companyData) {
-      updateMutation.mutate({
-        ...companyData,
-        contact: {
-          ...companyData.contact,
-          [field]: value
-        }
-      });
-    }
+    setData(prev => ({
+      ...prev,
+      contact: {
+        ...prev.contact,
+        [field]: value
+      }
+    }));
   };
 
   const handleFileUpload = (type: string) => {
@@ -187,7 +217,7 @@ export default function CompanySettings() {
                 </label>
                 <input
                   type="text"
-                  value={companyData?.basicInfo?.name || ''}
+                  value={data.basicInfo.name}
                   onChange={(e) => updateBasicInfo('name', e.target.value)}
                   disabled={!isEditing}
                   className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
@@ -202,7 +232,7 @@ export default function CompanySettings() {
                 </label>
                 <input
                   type="text"
-                  value={companyData?.basicInfo?.tradingName || ''}
+                  value={data.basicInfo.tradingName}
                   onChange={(e) => updateBasicInfo('tradingName', e.target.value)}
                   disabled={!isEditing}
                   className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
@@ -217,7 +247,7 @@ export default function CompanySettings() {
                 </label>
                 <input
                   type="text"
-                  value={companyData?.basicInfo?.registrationNumber || ''}
+                  value={data.basicInfo.registrationNumber}
                   onChange={(e) => updateBasicInfo('registrationNumber', e.target.value)}
                   disabled={!isEditing}
                   className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
@@ -232,7 +262,7 @@ export default function CompanySettings() {
                 </label>
                 <input
                   type="text"
-                  value={companyData?.basicInfo?.taxNumber || ''}
+                  value={data.basicInfo.taxNumber}
                   onChange={(e) => updateBasicInfo('taxNumber', e.target.value)}
                   disabled={!isEditing}
                   className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${

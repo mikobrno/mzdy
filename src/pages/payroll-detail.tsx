@@ -1,7 +1,4 @@
 import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiService } from '@/services/api';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -22,7 +19,83 @@ import {
   Clock
 } from 'lucide-react';
 
-// Funkce pro mapování stavů mzdy
+// Mock data pro individuální zpracování mezd
+const mockEmployeePayroll = {
+  id: '1',
+  employeeId: 'emp-123',
+  employee: {
+    firstName: 'Jana',
+    lastName: 'Nováková',
+    personalNumber: '7856341234',
+    birthDate: '1985-05-15',
+    position: 'Účetní',
+    workStartDate: '2020-01-15',
+    bankAccount: '123456789/0100',
+    healthInsurance: 'VZP',
+    address: 'Pražská 123, Praha 1'
+  },
+  svj: {
+    id: 'svj-1',
+    name: 'Dřevařská 851/4',
+    ico: '12345678'
+  },
+  payrollPeriod: {
+    month: 1,
+    year: 2026
+  },
+  status: 'draft', // draft, ready_for_approval, approved, paid
+  calculationData: {
+    workDays: 21,
+    workedDays: 21,
+    hourlyRate: 150,
+    totalHours: 168,
+    overtimeHours: 8,
+    overtimeRate: 195,
+    sickDays: 0,
+    vacationDays: 0
+  },
+  salaryComponents: {
+    basicSalary: 25200,
+    overtime: 1560,
+    bonus: 0,
+    allowances: 0,
+    grossSalary: 26760,
+    socialInsurance: 1740,
+    healthInsurance: 1205,
+    taxBase: 26760,
+    tax: 4014,
+    taxDeduction: 2570,
+    netSalary: 20115
+  },
+  deductions: [
+    {
+      type: 'Exekuce',
+      amount: 500,
+      description: 'Soudní exekuce - č.j. 123/2025'
+    }
+  ],
+  documents: {
+    payslip: false,
+    bankTransfer: false,
+    taxStatement: false
+  },
+  history: [
+    {
+      date: '2026-01-15T10:30:00',
+      action: 'created',
+      user: 'System',
+      description: 'Automaticky vygenerováno z předchozího měsíce'
+    },
+    {
+      date: '2026-01-16T14:20:00',
+      action: 'modified',
+      user: 'Marie Svobodová',
+      description: 'Úprava počtu odpracovaných hodin'
+    }
+  ],
+  notes: 'Zaměstnanec pracoval přesčas kvůli závěrce účetnictví.'
+};
+
 const getStatusInfo = (status: string) => {
   switch (status) {
     case 'draft':
@@ -39,62 +112,20 @@ const getStatusInfo = (status: string) => {
 };
 
 export default function PayrollDetail() {
-  const { employeeId, svjId, year, month } = useParams<{ employeeId: string; svjId: string; year: string; month: string }>();
-  const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
-
-  // Query pro detail mzdy z Nhost
-  const { data: payrollData, isLoading } = useQuery({
-    queryKey: ['payroll-detail', employeeId, svjId, year, month],
-    queryFn: () => apiService.getPayrollDetail(employeeId!, svjId!, parseInt(year!), parseInt(month!)),
-    enabled: !!employeeId && !!svjId && !!year && !!month
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: (data: any) => apiService.updatePayrollRecord(employeeId!, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['payroll-detail', employeeId, svjId, year, month] });
-      setIsEditing(false);
-    }
-  });
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2 text-gray-600">Načítání detailu mzdy...</span>
-      </div>
-    );
-  }
-
-  if (!payrollData) {
-    return (
-      <div className="p-6 max-w-6xl mx-auto">
-        <div className="text-center py-12">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Mzda nebyla nalezena
-          </h3>
-          <p className="text-gray-600 mb-4">
-            Požadovaný záznam mzdy neexistuje
-          </p>
-          <Link to="/payroll">
-            <Button>Zpět na přehled mezd</Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  const [payrollData, setPayrollData] = useState(mockEmployeePayroll);
 
   const statusInfo = getStatusInfo(payrollData.status);
   const StatusIcon = statusInfo.icon;
 
   const handleSave = () => {
+    // Uložení změn
     console.log('Ukládám změny v mzdě');
-    updateMutation.mutate(payrollData);
+    setIsEditing(false);
   };
 
   const handleApprove = () => {
-    updateMutation.mutate({
+    setPayrollData({
       ...payrollData,
       status: 'approved'
     });
@@ -120,10 +151,10 @@ export default function PayrollDetail() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              {payrollData?.employee?.name || 'Neznámý zaměstnanec'}
+              {payrollData.employee.firstName} {payrollData.employee.lastName}
             </h1>
             <p className="text-gray-600">
-              {payrollData?.svj?.name || 'Neznámé SVJ'} • {payrollData?.month || 0}/{payrollData?.year || 0}
+              {payrollData.svj.name} • {payrollData.payrollPeriod.month}/{payrollData.payrollPeriod.year}
             </p>
           </div>
           <Badge className={statusInfo.color}>
@@ -132,7 +163,7 @@ export default function PayrollDetail() {
           </Badge>
         </div>
         <div className="flex gap-2">
-          {payrollData?.status === 'draft' && (
+          {payrollData.status === 'draft' && (
             <>
               <Button 
                 variant="outline"
@@ -154,7 +185,7 @@ export default function PayrollDetail() {
               </Button>
             </>
           )}
-          {payrollData?.status === 'ready_for_approval' && (
+          {payrollData.status === 'ready_for_approval' && (
             <Button onClick={handleApprove} className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4" />
               Schválit
@@ -245,16 +276,13 @@ export default function PayrollDetail() {
             <CardContent>
               {isEditing ? (
                 <textarea 
-                  value={payrollData?.notes || ''}
-                  onChange={(e) => {
-                    // V edit módu by se upravoval lokální state, zatím jen read-only
-                    console.log('Poznámky změněny:', e.target.value);
-                  }}
+                  value={payrollData.notes}
+                  onChange={(e) => setPayrollData({...payrollData, notes: e.target.value})}
                   className="w-full h-20 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Zadejte poznámky..."
                 />
               ) : (
-                <p className="text-sm text-gray-700">{payrollData?.notes || 'Žádné poznámky'}</p>
+                <p className="text-sm text-gray-700">{payrollData.notes || 'Žádné poznámky'}</p>
               )}
             </CardContent>
           </Card>

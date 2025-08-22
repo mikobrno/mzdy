@@ -15,7 +15,6 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { nhostApiService } from '@/services/nhost-api'
 
 interface RegisterData {
   firstName: string
@@ -45,362 +44,368 @@ export default function Register() {
   const [errors, setErrors] = useState<{[key: string]: string}>({})
 
   const registerMutation = useMutation({
-    mutationFn: (data: RegisterData) => nhostApiService.registerUser(data),
+    mutationFn: (data: RegisterData) => {
+      // Mock API volání
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({ success: true, message: 'Registrace úspěšná' })
+        }, 2000)
+      })
+    },
     onSuccess: () => {
       navigate('/login?registered=true')
     },
     onError: (error: any) => {
-      setErrors({
-        general: error.message || 'Registrace se nezdařila. Zkuste to prosím znovu.'
+      setErrors({ 
+        general: error.message || 'Registrace se nezdařila. Zkuste to prosím znovu.' 
       })
     }
   })
 
-  const validateForm = () => {
+  const validateForm = (): {[key: string]: string} => {
     const newErrors: {[key: string]: string} = {}
-
+    
     if (!formData.firstName.trim()) {
       newErrors.firstName = 'Jméno je povinné'
     }
-
+    
     if (!formData.lastName.trim()) {
       newErrors.lastName = 'Příjmení je povinné'
     }
-
+    
     if (!formData.email) {
-      newErrors.email = 'Email je povinný'
+      newErrors.email = 'E-mail je povinný'
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Neplatný formát emailu'
+      newErrors.email = 'E-mail není ve správném formátu'
     }
-
+    
     if (!formData.password) {
       newErrors.password = 'Heslo je povinné'
     } else if (formData.password.length < 8) {
       newErrors.password = 'Heslo musí mít alespoň 8 znaků'
     } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
-      newErrors.password = 'Heslo musí obsahovat velké i malé písmena a číslo'
+      newErrors.password = 'Heslo musí obsahovat malé písmeno, velké písmeno a číslici'
     }
-
-    if (formData.password !== formData.confirmPassword) {
+    
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Potvrzení hesla je povinné'
+    } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Hesla se neshodují'
     }
-
+    
     if (!formData.svjName.trim()) {
       newErrors.svjName = 'Název SVJ je povinný'
     }
-
+    
     if (!formData.agreeToTerms) {
-      newErrors.agreeToTerms = 'Musíte souhlasit s podmínkami'
+      newErrors.agreeToTerms = 'Musíte souhlasit s podmínkami užití'
     }
-
+    
     return newErrors
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    setErrors({})
     
     const validationErrors = validateForm()
+    
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors)
       return
     }
-
-    setErrors({})
+    
     registerMutation.mutate(formData)
   }
 
-  const handleInputChange = (field: keyof RegisterData) => (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const value = e.target.type === 'checkbox' 
-      ? (e.target as HTMLInputElement).checked 
-      : e.target.value
-
-    setFormData(prev => ({ ...prev, [field]: value }))
-    
-    // Clear error for this field when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }))
-    }
-  }
-
   const positionOptions = [
-    { value: 'admin', label: 'Správce systému' },
-    { value: 'manager', label: 'Manažer SVJ' },
-    { value: 'accountant', label: 'Mzdový účetní' }
+    { value: 'admin', label: 'Administrátor', description: 'Plný přístup ke všem funkcím' },
+    { value: 'accountant', label: 'Účetní', description: 'Správa mezd a finančních operací' },
+    { value: 'manager', label: 'Manažer SVJ', description: 'Správa zaměstnanců a základních operací' }
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <div className="flex justify-center">
-            <div className="rounded-full bg-blue-100 p-3">
-              <Calculator className="h-8 w-8 text-blue-600" />
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-2xl">
+        {/* Logo a název */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl mb-4">
+            <Calculator className="h-8 w-8 text-white" />
           </div>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">
-            Registrace do systému
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Vytvořte si účet pro správu mzdové agendy
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Mzdy SVJ</h1>
+          <p className="text-gray-600">Vytvoření nového účtu pro správu SVJ</p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Osobní údaje</CardTitle>
-            <CardDescription>
-              Zadejte své údaje pro vytvoření účtu
+        <Card className="shadow-xl border-0">
+          <CardHeader className="space-y-1 pb-6">
+            <CardTitle className="text-2xl font-bold text-center">Registrace</CardTitle>
+            <CardDescription className="text-center">
+              Vyplňte formulář pro vytvoření vašeho účtu
             </CardDescription>
           </CardHeader>
+          
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Obecná chyba */}
               {errors.general && (
-                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" />
-                  <span className="text-sm">{errors.general}</span>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-600" />
+                  <span className="text-sm text-red-700">{errors.general}</span>
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
-                    Jméno
+              {/* Osobní údaje */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label htmlFor="firstName" className="text-sm font-medium text-gray-700">
+                    Jméno *
                   </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <User className="h-4 w-4 text-gray-400" />
-                    </div>
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input
                       id="firstName"
                       type="text"
+                      placeholder="Vaše jméno"
                       value={formData.firstName}
-                      onChange={handleInputChange('firstName')}
-                      className={`block w-full pl-10 pr-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        errors.firstName ? 'border-red-300' : 'border-gray-300'
+                      onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+                      className={`pl-10 w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        errors.firstName ? 'border-red-300 bg-red-50' : 'border-gray-300'
                       }`}
-                      placeholder="Jan"
+                      disabled={registerMutation.isPending}
                     />
                   </div>
                   {errors.firstName && (
-                    <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>
+                    <p className="text-sm text-red-600">{errors.firstName}</p>
                   )}
                 </div>
 
-                <div>
-                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
-                    Příjmení
+                <div className="space-y-2">
+                  <label htmlFor="lastName" className="text-sm font-medium text-gray-700">
+                    Příjmení *
                   </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <User className="h-4 w-4 text-gray-400" />
-                    </div>
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input
                       id="lastName"
                       type="text"
+                      placeholder="Vaše příjmení"
                       value={formData.lastName}
-                      onChange={handleInputChange('lastName')}
-                      className={`block w-full pl-10 pr-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        errors.lastName ? 'border-red-300' : 'border-gray-300'
+                      onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+                      className={`pl-10 w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        errors.lastName ? 'border-red-300 bg-red-50' : 'border-gray-300'
                       }`}
-                      placeholder="Novák"
+                      disabled={registerMutation.isPending}
                     />
                   </div>
                   {errors.lastName && (
-                    <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>
+                    <p className="text-sm text-red-600">{errors.lastName}</p>
                   )}
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
+              {/* E-mail */}
+              <div className="space-y-2">
+                <label htmlFor="email" className="text-sm font-medium text-gray-700">
+                  E-mailová adresa *
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-4 w-4 text-gray-400" />
-                  </div>
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
                     id="email"
                     type="email"
+                    placeholder="vas.email@example.com"
                     value={formData.email}
-                    onChange={handleInputChange('email')}
-                    className={`block w-full pl-10 pr-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.email ? 'border-red-300' : 'border-gray-300'
+                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    className={`pl-10 w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300'
                     }`}
-                    placeholder="jan@example.com"
+                    disabled={registerMutation.isPending}
                   />
                 </div>
                 {errors.email && (
-                  <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                  <p className="text-sm text-red-600">{errors.email}</p>
                 )}
               </div>
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                  Heslo
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-4 w-4 text-gray-400" />
+              {/* Hesla */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label htmlFor="password" className="text-sm font-medium text-gray-700">
+                    Heslo *
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      value={formData.password}
+                      onChange={(e) => setFormData({...formData, password: e.target.value})}
+                      className={`pl-10 pr-10 w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        errors.password ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                      }`}
+                      disabled={registerMutation.isPending}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      disabled={registerMutation.isPending}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
-                  <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={formData.password}
-                    onChange={handleInputChange('password')}
-                    className={`block w-full pl-10 pr-10 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.password ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                    placeholder="Alespoň 8 znaků"
-                  />
-                  <button
-                    type="button"
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-gray-400" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-gray-400" />
-                    )}
-                  </button>
+                  {errors.password && (
+                    <p className="text-sm text-red-600">{errors.password}</p>
+                  )}
                 </div>
-                {errors.password && (
-                  <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-                )}
-              </div>
 
-              <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                  Potvrzení hesla
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-4 w-4 text-gray-400" />
+                <div className="space-y-2">
+                  <label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">
+                    Potvrzení hesla *
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      value={formData.confirmPassword}
+                      onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                      className={`pl-10 pr-10 w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        errors.confirmPassword ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                      }`}
+                      disabled={registerMutation.isPending}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      disabled={registerMutation.isPending}
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
-                  <input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange('confirmPassword')}
-                    className={`block w-full pl-10 pr-10 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.confirmPassword ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                    placeholder="Zadejte heslo znovu"
-                  />
-                  <button
-                    type="button"
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="h-4 w-4 text-gray-400" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-gray-400" />
-                    )}
-                  </button>
+                  {errors.confirmPassword && (
+                    <p className="text-sm text-red-600">{errors.confirmPassword}</p>
+                  )}
                 </div>
-                {errors.confirmPassword && (
-                  <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
-                )}
               </div>
 
-              <div>
-                <label htmlFor="svjName" className="block text-sm font-medium text-gray-700 mb-1">
-                  Název SVJ
+              {/* SVJ informace */}
+              <div className="space-y-2">
+                <label htmlFor="svjName" className="text-sm font-medium text-gray-700">
+                  Název SVJ *
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Building2 className="h-4 w-4 text-gray-400" />
-                  </div>
+                  <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
                     id="svjName"
                     type="text"
+                    placeholder="SVJ Krásná vyhlídka"
                     value={formData.svjName}
-                    onChange={handleInputChange('svjName')}
-                    className={`block w-full pl-10 pr-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.svjName ? 'border-red-300' : 'border-gray-300'
+                    onChange={(e) => setFormData({...formData, svjName: e.target.value})}
+                    className={`pl-10 w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      errors.svjName ? 'border-red-300 bg-red-50' : 'border-gray-300'
                     }`}
-                    placeholder="SVJ Nové Město"
+                    disabled={registerMutation.isPending}
                   />
                 </div>
                 {errors.svjName && (
-                  <p className="mt-1 text-sm text-red-600">{errors.svjName}</p>
+                  <p className="text-sm text-red-600">{errors.svjName}</p>
                 )}
               </div>
 
-              <div>
-                <label htmlFor="position" className="block text-sm font-medium text-gray-700 mb-1">
-                  Pozice
+              {/* Pozice */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Vaše pozice *
                 </label>
-                <select
-                  id="position"
-                  value={formData.position}
-                  onChange={handleInputChange('position')}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  {positionOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
+                <div className="space-y-2">
+                  {positionOptions.map((option) => (
+                    <label key={option.value} className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                      <input
+                        type="radio"
+                        name="position"
+                        value={option.value}
+                        checked={formData.position === option.value}
+                        onChange={(e) => setFormData({...formData, position: e.target.value as any})}
+                        className="text-blue-600 focus:ring-blue-500"
+                        disabled={registerMutation.isPending}
+                      />
+                      <div>
+                        <div className="font-medium text-gray-900">{option.label}</div>
+                        <div className="text-sm text-gray-500">{option.description}</div>
+                      </div>
+                    </label>
                   ))}
-                </select>
+                </div>
               </div>
 
-              <div className="flex items-center">
-                <input
-                  id="agreeToTerms"
-                  type="checkbox"
-                  checked={formData.agreeToTerms}
-                  onChange={handleInputChange('agreeToTerms')}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="agreeToTerms" className="ml-2 block text-sm text-gray-900">
-                  Souhlasím s{' '}
-                  <Link to="/terms" className="text-blue-600 hover:text-blue-500">
-                    podmínkami používání
-                  </Link>{' '}
-                  a{' '}
-                  <Link to="/privacy" className="text-blue-600 hover:text-blue-500">
-                    zpracováním osobních údajů
-                  </Link>
+              {/* Souhlas s podmínkami */}
+              <div className="space-y-2">
+                <label className="flex items-start space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.agreeToTerms}
+                    onChange={(e) => setFormData({...formData, agreeToTerms: e.target.checked})}
+                    className={`mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500 ${
+                      errors.agreeToTerms ? 'border-red-300' : ''
+                    }`}
+                    disabled={registerMutation.isPending}
+                  />
+                  <span className="text-sm text-gray-700">
+                    Souhlasím s{' '}
+                    <Link to="/terms" className="text-blue-600 hover:text-blue-800 hover:underline">
+                      podmínkami užití
+                    </Link>{' '}
+                    a{' '}
+                    <Link to="/privacy" className="text-blue-600 hover:text-blue-800 hover:underline">
+                      zásadami ochrany soukromí
+                    </Link>
+                  </span>
                 </label>
+                {errors.agreeToTerms && (
+                  <p className="text-sm text-red-600">{errors.agreeToTerms}</p>
+                )}
               </div>
-              {errors.agreeToTerms && (
-                <p className="text-sm text-red-600">{errors.agreeToTerms}</p>
-              )}
 
-              <Button
-                type="submit"
-                className="w-full"
+              {/* Registrace tlačítko */}
+              <Button 
+                type="submit" 
+                className="w-full" 
                 disabled={registerMutation.isPending}
               >
                 {registerMutation.isPending ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Registruje se...
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Registruji...
                   </>
                 ) : (
-                  'Zaregistrovat se'
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Vytvořit účet
+                  </>
                 )}
               </Button>
-
-              <div className="text-center">
-                <span className="text-sm text-gray-600">
-                  Už máte účet?{' '}
-                  <Link
-                    to="/login"
-                    className="font-medium text-blue-600 hover:text-blue-500"
-                  >
-                    Přihlaste se
-                  </Link>
-                </span>
-              </div>
             </form>
+
+            {/* Přihlášení odkaz */}
+            <div className="mt-6 pt-6 border-t border-gray-200 text-center">
+              <p className="text-sm text-gray-600">
+                Už máte účet?{' '}
+                <Link to="/login" className="text-blue-600 hover:text-blue-800 hover:underline font-medium">
+                  Přihlásit se
+                </Link>
+              </p>
+            </div>
           </CardContent>
         </Card>
+
+        {/* Footer */}
+        <div className="mt-8 text-center text-sm text-gray-500">
+          <p>© 2025 Mzdy SVJ. Všechna práva vyhrazena.</p>
+        </div>
       </div>
     </div>
   )

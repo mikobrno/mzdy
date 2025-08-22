@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -22,7 +21,6 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/use-auth';
-import { nhostApiService } from '../services/nhost-api';
 
 export default function ProfileSettings() {
   const { user } = useAuth();
@@ -30,21 +28,9 @@ export default function ProfileSettings() {
   const [isEditing, setIsEditing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
-  const queryClient = useQueryClient();
 
-  const { data: profileData, isLoading } = useQuery({
-    queryKey: ['user-profile'],
-    queryFn: () => nhostApiService.getUserProfile(),
-    staleTime: 1000 * 60 * 5,
-  });
-
-  const { data: notificationSettings } = useQuery({
-    queryKey: ['notification-settings'],
-    queryFn: () => nhostApiService.getNotificationSettings(),
-    staleTime: 1000 * 60 * 5,
-  });
-
-  const [formData, setFormData] = useState({
+  // Mock data pro uživatelský profil
+  const [profileData, setProfileData] = useState({
     firstName: user?.firstName || 'Jan',
     lastName: user?.lastName || 'Novák',
     email: user?.email || 'jan.novak@svjmanagement.cz',
@@ -64,7 +50,7 @@ export default function ProfileSettings() {
     confirmPassword: ''
   });
 
-  const [notificationData, setNotificationData] = useState({
+  const [notificationSettings, setNotificationSettings] = useState({
     emailNotifications: true,
     pushNotifications: false,
     smsNotifications: false,
@@ -73,56 +59,23 @@ export default function ProfileSettings() {
     systemUpdates: false
   });
 
-  const updateProfileMutation = useMutation({
-    mutationFn: (data: any) => nhostApiService.updateUserProfile(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
-      setIsEditing(false);
-    }
-  });
-
-  const changePasswordMutation = useMutation({
-    mutationFn: (data: any) => nhostApiService.changePassword(data),
-    onSuccess: () => {
-      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    }
-  });
-
-  const updateNotificationsMutation = useMutation({
-    mutationFn: (data: any) => nhostApiService.updateNotificationSettings(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notification-settings'] });
-    }
-  });
-
-  useEffect(() => {
-    if (profileData) {
-      setFormData(profileData);
-    }
-  }, [profileData]);
-
-  useEffect(() => {
-    if (notificationSettings) {
-      setNotificationData(notificationSettings);
-    }
-  }, [notificationSettings]);
-
-  const updateFormField = (field: string, value: string) => {
-    setFormData(prev => ({
+  const updateProfileField = (field: string, value: string) => {
+    setProfileData(prev => ({
       ...prev,
       [field]: value
     }));
   };
 
   const updateNotification = (field: string, value: boolean) => {
-    setNotificationData(prev => ({
+    setNotificationSettings(prev => ({
       ...prev,
       [field]: value
     }));
   };
 
   const handleSaveProfile = () => {
-    updateProfileMutation.mutate(formData);
+    console.log('Ukládám profil:', profileData);
+    setIsEditing(false);
   };
 
   const handleChangePassword = () => {
@@ -130,16 +83,13 @@ export default function ProfileSettings() {
       alert('Hesla se neshodují');
       return;
     }
-    changePasswordMutation.mutate(passwordData);
+    console.log('Měním heslo');
+    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
   };
 
   const handleAvatarUpload = () => {
     console.log('Nahrávám nový avatar');
   };
-
-  if (isLoading) {
-    return <div>Načítám profil...</div>;
-  }
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -169,7 +119,7 @@ export default function ProfileSettings() {
           <div className="flex items-center gap-6">
             <div className="relative">
               <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold">
-                {formData.firstName.charAt(0)}{formData.lastName.charAt(0)}
+                {profileData.firstName.charAt(0)}{profileData.lastName.charAt(0)}
               </div>
               {isEditing && (
                 <button
@@ -181,9 +131,9 @@ export default function ProfileSettings() {
               )}
             </div>
             <div className="flex-1">
-              <h2 className="text-xl font-bold text-gray-900">{formData.firstName} {formData.lastName}</h2>
-              <p className="text-gray-600">{formData.position}</p>
-              <p className="text-sm text-gray-500">{formData.department}</p>
+              <h2 className="text-xl font-bold text-gray-900">{profileData.firstName} {profileData.lastName}</h2>
+              <p className="text-gray-600">{profileData.position}</p>
+              <p className="text-sm text-gray-500">{profileData.department}</p>
               <div className="flex gap-2 mt-2">
                 <Badge className="bg-green-100 text-green-800">Aktivní</Badge>
                 <Badge className="bg-blue-100 text-blue-800">Ověřený účet</Badge>
@@ -245,8 +195,8 @@ export default function ProfileSettings() {
                 </label>
                 <input
                   type="text"
-                  value={formData.firstName}
-                  onChange={(e) => updateFormField('firstName', e.target.value)}
+                  value={profileData.firstName}
+                  onChange={(e) => updateProfileField('firstName', e.target.value)}
                   disabled={!isEditing}
                   className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     !isEditing ? 'bg-gray-50' : ''
@@ -260,8 +210,8 @@ export default function ProfileSettings() {
                 </label>
                 <input
                   type="text"
-                  value={formData.lastName}
-                  onChange={(e) => updateFormField('lastName', e.target.value)}
+                  value={profileData.lastName}
+                  onChange={(e) => updateProfileField('lastName', e.target.value)}
                   disabled={!isEditing}
                   className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     !isEditing ? 'bg-gray-50' : ''
@@ -275,8 +225,8 @@ export default function ProfileSettings() {
                 </label>
                 <input
                   type="email"
-                  value={formData.email}
-                  onChange={(e) => updateFormField('email', e.target.value)}
+                  value={profileData.email}
+                  onChange={(e) => updateProfileField('email', e.target.value)}
                   disabled={!isEditing}
                   className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     !isEditing ? 'bg-gray-50' : ''
@@ -290,8 +240,8 @@ export default function ProfileSettings() {
                 </label>
                 <input
                   type="tel"
-                  value={formData.phone}
-                  onChange={(e) => updateFormField('phone', e.target.value)}
+                  value={profileData.phone}
+                  onChange={(e) => updateProfileField('phone', e.target.value)}
                   disabled={!isEditing}
                   className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     !isEditing ? 'bg-gray-50' : ''
@@ -305,8 +255,8 @@ export default function ProfileSettings() {
                 </label>
                 <input
                   type="text"
-                  value={formData.position}
-                  onChange={(e) => updateFormField('position', e.target.value)}
+                  value={profileData.position}
+                  onChange={(e) => updateProfileField('position', e.target.value)}
                   disabled={!isEditing}
                   className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     !isEditing ? 'bg-gray-50' : ''
@@ -319,8 +269,8 @@ export default function ProfileSettings() {
                   Oddělení
                 </label>
                 <select
-                  value={formData.department}
-                  onChange={(e) => updateFormField('department', e.target.value)}
+                  value={profileData.department}
+                  onChange={(e) => updateProfileField('department', e.target.value)}
                   disabled={!isEditing}
                   className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     !isEditing ? 'bg-gray-50' : ''
@@ -374,7 +324,6 @@ export default function ProfileSettings() {
                     />
                     <button
                       type="button"
-                      aria-label="Zobrazit/skrýt současné heslo"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute inset-y-0 right-0 pr-3 flex items-center"
                     >
@@ -475,14 +424,13 @@ export default function ProfileSettings() {
                     <div className="text-sm text-gray-500">{notification.description}</div>
                   </div>
                   <button
-                    aria-label={`${notificationData[notification.key as keyof typeof notificationData] ? 'Vypnout' : 'Zapnout'} ${notification.label}`}
-                    onClick={() => updateNotification(notification.key, !notificationData[notification.key as keyof typeof notificationData])}
+                    onClick={() => updateNotification(notification.key, !notificationSettings[notification.key as keyof typeof notificationSettings])}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      notificationData[notification.key as keyof typeof notificationData] ? 'bg-blue-600' : 'bg-gray-200'
+                      notificationSettings[notification.key as keyof typeof notificationSettings] ? 'bg-blue-600' : 'bg-gray-200'
                     }`}
                   >
                     <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      notificationData[notification.key as keyof typeof notificationData] ? 'translate-x-6' : 'translate-x-1'
+                      notificationSettings[notification.key as keyof typeof notificationSettings] ? 'translate-x-6' : 'translate-x-1'
                     }`} />
                   </button>
                 </div>
@@ -511,9 +459,8 @@ export default function ProfileSettings() {
                   Jazyk rozhraní
                 </label>
                 <select
-                  aria-label="Jazyk rozhraní"
-                  value={formData.language}
-                  onChange={(e) => updateFormField('language', e.target.value)}
+                  value={profileData.language}
+                  onChange={(e) => updateProfileField('language', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="cs">Čeština</option>
@@ -527,9 +474,8 @@ export default function ProfileSettings() {
                   Časová zóna
                 </label>
                 <select
-                  aria-label="Časová zóna"
-                  value={formData.timezone}
-                  onChange={(e) => updateFormField('timezone', e.target.value)}
+                  value={profileData.timezone}
+                  onChange={(e) => updateProfileField('timezone', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="Europe/Prague">Praha (UTC+1)</option>
@@ -543,9 +489,8 @@ export default function ProfileSettings() {
                   Formát data
                 </label>
                 <select
-                  aria-label="Formát data"
-                  value={formData.dateFormat}
-                  onChange={(e) => updateFormField('dateFormat', e.target.value)}
+                  value={profileData.dateFormat}
+                  onChange={(e) => updateProfileField('dateFormat', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="DD.MM.YYYY">DD.MM.YYYY</option>
@@ -559,9 +504,8 @@ export default function ProfileSettings() {
                   Téma rozhraní
                 </label>
                 <select
-                  aria-label="Téma rozhraní"
-                  value={formData.theme}
-                  onChange={(e) => updateFormField('theme', e.target.value)}
+                  value={profileData.theme}
+                  onChange={(e) => updateProfileField('theme', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="light">Světlé</option>
@@ -572,10 +516,7 @@ export default function ProfileSettings() {
             </div>
 
             <div className="flex justify-end mt-6">
-              <Button 
-                onClick={() => updateProfileMutation.mutate(formData)}
-                className="flex items-center gap-2"
-              >
+              <Button className="flex items-center gap-2">
                 <Save className="h-4 w-4" />
                 Uložit předvolby
               </Button>
