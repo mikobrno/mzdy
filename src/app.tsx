@@ -1,6 +1,6 @@
 import { Route, Routes } from 'react-router-dom';
 import { DashboardPage } from './pages/dashboard';
-import { SvjPage, SvjDetailPage, SvjNewPage } from './modules/svj';
+import { SvjPage, SvjDetailPage, SvjNewPage, SvjEditPage } from './modules/svj';
 import { EmployeesPage, EmployeeDetailPage, EmployeeNewPage, EmployeeEditPage } from './modules/employees';
 import { PayrollsPage } from './modules/payrolls';
 import { HealthInsuranceCompaniesPage } from './modules/health-insurance-companies';
@@ -20,6 +20,7 @@ function App() {
         <Route path="/svj" element={<SvjPage />} />
         <Route path="/svj/new" element={<SvjNewPage />} />
         <Route path="/svj/:id" element={<SvjDetailPage />} />
+        <Route path="/svj/:id/edit" element={<SvjEditPage />} />
 
         {/* Employee Routes */}
         <Route path="/employees" element={<EmployeesPage />} />
