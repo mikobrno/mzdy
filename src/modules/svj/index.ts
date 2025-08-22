@@ -1,2 +1,3 @@
-export { default as SVJDetailPage } from '@/pages/svj-detail'
-export * as SVJService from '@/services/svj-service'
+export * from './pages/svj.page';
+export * from './pages/svj-detail.page';
+export * from './pages/svj-new.page';

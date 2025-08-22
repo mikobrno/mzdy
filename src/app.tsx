@@ -1,140 +1,41 @@
-import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom'
-import { AuthProvider } from '@/hooks/use-auth'
-import { ToastProvider } from '@/components/ui/toast'
-import Navigation from '@/components/layout/navigation'
-import Dashboard from '@/pages/dashboard'
-import SVJDetail from '@/pages/svj-detail'
-import SVJListPage from '@/pages/svj'
-import SVJNewPage from '@/pages/svj-new'
-import EmployeesPage from '@/pages/employees'
-import PayrollPage from '@/pages/payroll'
-import EmployeeDetailPage from './pages/employee-detail'
-import EmployeeEditPage from './pages/employee-edit'
-import EmployeeNewPage from './pages/employee-new'
-import Templates from '@/pages/templates'
-import TemplateEditor from '@/pages/template-editor'
-import Settings from '@/pages/settings'
-import DynamicVariables from '@/pages/dynamic-variables'
-import PayrollMonthly from '@/pages/payroll-monthly'
-import CommunicationCampaigns from '@/pages/communication-campaigns'
-import SettingsMain from '@/pages/settings-main'
-import EmailSettings from '@/pages/settings-email'
-import TaxSettings from '@/pages/settings-taxes'
-import UserSettings from '@/pages/settings-users'
-import ApiSettings from '@/pages/settings-api'
-import SecuritySettings from '@/pages/settings-security'
-import CompanySettings from '@/pages/settings-company'
-import DocumentsSettings from '@/pages/settings-documents'
-import BackupSettings from '@/pages/settings-backup'
-import NotificationsSettings from '@/pages/settings-notifications'
-import AppearanceSettings from '@/pages/settings-appearance'
-import SystemSettings from '@/pages/settings-system'
-import BillingSettings from '@/pages/settings-billing'
-import ProfileSettings from '@/pages/profile-settings'
-import NotificationCenter from '@/pages/notification-center'
-import PdfTemplatesPage from '@/pages/pdf-templates'
-import PdfGeneratorPage from '@/pages/pdf-generator'
-import PdfHubPage from '@/pages/pdf'
-import EmailComposePage from '@/pages/email-compose'
-import HealthInsuranceAdminPage from '@/pages/health-insurance-admin'
+import { Route, Routes } from 'react-router-dom';
+import { DashboardPage } from './pages/dashboard';
+import { SvjPage, SvjDetailPage, SvjNewPage } from './modules/svj';
+import { EmployeesPage, EmployeeDetailPage, EmployeeNewPage, EmployeeEditPage } from './modules/employees';
+import { PayrollsPage } from './modules/payrolls';
+import { HealthInsuranceCompaniesPage } from './modules/health-insurance-companies';
+import { PdfTemplatesPage } from './modules/pdf-templates';
+import { ExecutionsPage } from './modules/executions';
+import { PayrollDeductionsPage } from './modules/payroll-deductions';
+import { Layout } from './components/layout/layout';
 
-function EmployeesPageLegacy() {
+function App() {
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-4">Zaměstnanci</h1>
-      <p className="text-gray-600">Zde bude seznam všech zaměstnanců napříč SVJ.</p>
-    </div>
-  )
+    <Layout>
+      <Routes>
+        {/* Dočasně přesměrujeme hlavní stránku na SVJ, než opravíme Dashboard */}
+        <Route path="/" element={<SvjPage />} />
+        
+        {/* SVJ Routes */}
+        <Route path="/svj" element={<SvjPage />} />
+        <Route path="/svj/new" element={<SvjNewPage />} />
+        <Route path="/svj/:id" element={<SvjDetailPage />} />
+
+        {/* Employee Routes */}
+        <Route path="/employees" element={<EmployeesPage />} />
+        <Route path="/employees/new" element={<EmployeeNewPage />} />
+        <Route path="/employees/:id" element={<EmployeeDetailPage />} />
+        <Route path="/employees/:id/edit" element={<EmployeeEditPage />} />
+        
+        {/* Ostatní routy, které budeme postupně opravovat */}
+        <Route path="/payrolls" element={<PayrollsPage />} />
+        <Route path="/health-insurance-companies" element={<HealthInsuranceCompaniesPage />} />
+        <Route path="/pdf-templates" element={<PdfTemplatesPage />} />
+        <Route path="/executions" element={<ExecutionsPage />} />
+        <Route path="/payroll-deductions" element={<PayrollDeductionsPage />} />
+      </Routes>
+    </Layout>
+  );
 }
 
-function CommunicationPage() {
-  return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-4">Komunikační modul</h1>
-      <p className="text-gray-600">Zde budou e-mailové šablony a kampaně.</p>
-    </div>
-  )
-}
-
-function SettingsPage() {
-  return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-4">Nastavení</h1>
-      <p className="text-gray-600">Zde bude konfigurace systému a uživatelských práv.</p>
-    </div>
-  )
-}
-
-function Layout() {
-  return (
-    <AuthProvider>
-      <ToastProvider>
-        <div className="min-h-screen gradient-bg">
-          <Navigation />
-          <main className="ml-64 min-h-screen">
-            <div className="container mx-auto p-8">
-              <Outlet />
-            </div>
-          </main>
-        </div>
-      </ToastProvider>
-    </AuthProvider>
-  )
-}
-
-const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <Layout />,
-    children: [
-      { index: true, element: <Dashboard /> },
-      { path: "svj", element: <SVJListPage /> },
-      { path: "svj/new", element: <SVJNewPage /> },
-      { path: "svj/:id", element: <SVJDetail /> },
-      { path: "employees", element: <EmployeesPage /> },
-      { path: "employees/new", element: <EmployeeNewPage /> },
-      { path: "employees/:id", element: <EmployeeDetailPage /> },
-      { path: "employees/:id/edit", element: <EmployeeEditPage /> },
-      { path: "payroll", element: <PayrollPage /> },
-      { path: "payroll/:svjId/:year/:month", element: <PayrollMonthly /> },
-      { path: "salaries/:svjId/:year/:month", element: <PayrollMonthly /> },
-      { path: "salaries/*", element: <PayrollPage /> },
-      { path: "payroll-workflow", element: <PayrollPage /> },
-      { path: "templates", element: <Templates /> },
-      { path: "templates/new", element: <TemplateEditor /> },
-      { path: "templates/:id/edit", element: <TemplateEditor /> },
-      { path: "dynamic-variables", element: <DynamicVariables /> },
-      { path: "communication-campaigns", element: <CommunicationCampaigns /> },
-      { path: "communication/*", element: <CommunicationPage /> },
-      { path: "pdf", element: <PdfHubPage /> },
-      { path: "pdf-templates", element: <PdfHubPage /> },
-      { path: "pdf-generator", element: <PdfHubPage /> },
-      { path: "email-compose", element: <EmailComposePage /> },
-      { path: "health-insurance-admin", element: <HealthInsuranceAdminPage /> },
-      { path: "profile", element: <ProfileSettings /> },
-      { path: "notifications", element: <NotificationCenter /> },
-      { path: "settings", element: <SettingsMain /> },
-      { path: "settings/email", element: <EmailSettings /> },
-      { path: "settings/taxes", element: <TaxSettings /> },
-      { path: "settings/users", element: <UserSettings /> },
-      { path: "settings/api", element: <ApiSettings /> },
-      { path: "settings/security", element: <SecuritySettings /> },
-      { path: "settings/company", element: <CompanySettings /> },
-      { path: "settings/documents", element: <DocumentsSettings /> },
-      { path: "settings/backup", element: <BackupSettings /> },
-      { path: "settings/notifications", element: <NotificationsSettings /> },
-      { path: "settings/appearance", element: <AppearanceSettings /> },
-      { path: "settings/system", element: <SystemSettings /> },
-      { path: "settings/billing", element: <BillingSettings /> },
-      { path: "settings/*", element: <SettingsPage /> }
-    ]
-  }
-], {
-  future: {
-    v7_relativeSplatPath: true
-  }
-});
-
-export default function App() {
-  return <RouterProvider router={router} />;
-}
+export default App;

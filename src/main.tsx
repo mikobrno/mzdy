@@ -1,8 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ApolloProvider } from '@apollo/client'
-import { apolloClient } from '@/lib/apollo'
 import { AuthProvider } from '@/hooks/use-auth'
 import { ToastProvider } from '@/components/ui/toast'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
@@ -21,19 +19,17 @@ const queryClient = new QueryClient({
       },
     },
     mutations: {
-      retry: false
-    }
+      retry: false,
+    },
   },
 })
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <ApolloProvider client={apolloClient}>
-        <QueryClientProvider client={queryClient}>
-          <App />
-        </QueryClientProvider>
-      </ApolloProvider>
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
     </ErrorBoundary>
   </StrictMode>,
 )
