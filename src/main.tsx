@@ -1,8 +1,9 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter } from 'react-router-dom'; // <-- Důležitý import
+import { BrowserRouter } from 'react-router-dom';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
+import { AuthProvider } from '@/components/auth/auth-provider'; // <-- Nový import
 import App from './app.tsx';
 import './index.css';
 
@@ -19,9 +20,11 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <BrowserRouter>  {/* <-- Chybějící komponenta */}
-          <App />
-        </BrowserRouter> {/* <-- Chybějící komponenta */}
+        <BrowserRouter>
+          <AuthProvider> {/* <-- Obalení aplikace AuthProviderem */}
+            <App />
+          </AuthProvider>
+        </BrowserRouter>
       </QueryClientProvider>
     </ErrorBoundary>
   </StrictMode>,

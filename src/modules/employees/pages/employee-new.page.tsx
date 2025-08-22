@@ -24,6 +24,7 @@ export function EmployeeNewPage() {
   const [svjId, setSvjId] = useState('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [employmentType, setEmploymentType] = useState('dpp');
   const [salaryAmount, setSalaryAmount] = useState('');
   const [companyId, setCompanyId] = useState('');
@@ -60,6 +61,7 @@ export function EmployeeNewPage() {
           svj_id: svjId,
           full_name: fullName,
           email: email,
+          phone: phone,
           employment_type: employmentType,
           salary_amount: parseFloat(salaryAmount),
           health_insurance_company_id: companyId || null, // Pojišťovna může být nepovinná
@@ -78,53 +80,54 @@ export function EmployeeNewPage() {
   };
 
   return (
-    <div className="p-4 max-w-2xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Přidat nového zaměstnance</h1>
-        <Link to="/employees" className="text-blue-500 hover:underline">&larr; Zpět na seznam</Link>
-      </div>
-      
-      <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6 space-y-4">
-        <div>
-          <label htmlFor="svj" className="block text-sm font-medium text-gray-700">Přiřadit k SVJ</label>
-          <select id="svj" value={svjId} onChange={(e) => setSvjId(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+    <div>
+      <h1>Přidat nového zaměstnance</h1>
+      <form onSubmit={handleSubmit}>
+        <label>
+          Přiřadit k SVJ:
+          <select value={svjId} onChange={(e) => setSvjId(e.target.value)} required>
             <option value="" disabled>Vyberte SVJ</option>
             {svjList.map(svj => <option key={svj.id} value={svj.id}>{svj.name}</option>)}
           </select>
-        </div>
-        <div>
-          <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">Celé jméno</label>
-          <input type="text" id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
-        </div>
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
-          <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
-        </div>
-        <div>
-          <label htmlFor="employmentType" className="block text-sm font-medium text-gray-700">Typ úvazku</label>
-          <select id="employmentType" value={employmentType} onChange={(e) => setEmploymentType(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+        </label>
+        <label>
+          Jméno zaměstnance:
+          <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+        </label>
+        <label>
+          Email:
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        </label>
+        <label>
+          Telefon:
+          <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        </label>
+        <label>
+          Typ úvazku:
+          <select value={employmentType} onChange={(e) => setEmploymentType(e.target.value)} required>
             <option value="dpp">DPP</option>
             <option value="vybor">Člen výboru</option>
           </select>
-        </div>
-        <div>
-          <label htmlFor="salaryAmount" className="block text-sm font-medium text-gray-700">Částka na smlouvě (Kč)</label>
-          <input type="number" id="salaryAmount" value={salaryAmount} onChange={(e) => setSalaryAmount(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
-        </div>
-        <div>
-          <label htmlFor="company" className="block text-sm font-medium text-gray-700">Zdravotní pojišťovna</label>
-          <select id="company" value={companyId} onChange={(e) => setCompanyId(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+        </label>
+        <label>
+          Částka na smlouvě (Kč):
+          <input type="number" value={salaryAmount} onChange={(e) => setSalaryAmount(e.target.value)} required />
+        </label>
+        <label>
+          Zdravotní pojišťovna:
+          <select value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
             <option value="">Nepřiřazeno</option>
             {companies.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
           </select>
-        </div>
+        </label>
         
         {error && <p className="text-red-500 text-sm">Chyba: {error}</p>}
         
-        <button type="submit" disabled={loading} className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50">
+        <button type="submit" disabled={loading}>
           {loading ? 'Ukládání...' : 'Uložit zaměstnance'}
         </button>
       </form>
+      <Link to="/employees">&larr; Zpět na seznam zaměstnanců</Link>
     </div>
   );
 }

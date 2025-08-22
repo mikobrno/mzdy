@@ -26,7 +26,6 @@ export function PdfTemplatesPage() {
         if (error) {
           throw error;
         }
-
         setTemplates(data as PdfTemplate[]);
       } catch (error: any) {
         setError(error.message);
@@ -42,30 +41,28 @@ export function PdfTemplatesPage() {
   if (error) return <p>Chyba: {error}</p>;
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Správa PDF šablon</h1>
-      <div className="bg-white shadow rounded-lg">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Název šablony</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Typ</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vytvořeno</th>
+    <div>
+      <h1>Správa PDF šablon</h1>
+      <table border={1}>
+        <thead>
+          <tr>
+            <th>Název šablony</th>
+            <th>Typ</th>
+            <th>Vytvořeno</th>
+          </tr>
+        </thead>
+        <tbody>
+          {templates.map((template) => (
+            <tr key={template.id}>
+              <td>{template.name}</td>
+              <td>{template.type}</td>
+              <td>
+                {new Date(template.created_at).toLocaleDateString('cs-CZ')}
+              </td>
             </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {templates.map((template) => (
-              <tr key={template.id}>
-                <td className="px-6 py-4 whitespace-nowrap">{template.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{template.type}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {new Date(template.created_at).toLocaleDateString('cs-CZ')}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

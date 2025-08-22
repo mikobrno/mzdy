@@ -25,7 +25,6 @@ export function HealthInsuranceCompaniesPage() {
         if (error) {
           throw error;
         }
-
         setCompanies(data as HealthInsuranceCompany[]);
       } catch (error: any) {
         setError(error.message);
@@ -41,26 +40,24 @@ export function HealthInsuranceCompaniesPage() {
   if (error) return <p>Chyba: {error}</p>;
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Zdravotní pojišťovny</h1>
-      <div className="bg-white shadow rounded-lg">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Název pojišťovny</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kód</th>
+    <div>
+      <h1>Zdravotní pojišťovny</h1>
+      <table border={1}>
+        <thead>
+          <tr>
+            <th>Název pojišťovny</th>
+            <th>Kód</th>
+          </tr>
+        </thead>
+        <tbody>
+          {companies.map((company) => (
+            <tr key={company.id}>
+              <td>{company.name}</td>
+              <td>{company.code}</td>
             </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {companies.map((company) => (
-              <tr key={company.id}>
-                <td className="px-6 py-4 whitespace-nowrap">{company.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{company.code}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

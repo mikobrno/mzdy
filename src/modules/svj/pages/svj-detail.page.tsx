@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/supabaseClient';
 
 // Typová definice zůstává stejná
@@ -15,7 +15,6 @@ interface Svj {
 
 export function SvjDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate(); // Přidáme pro přesměrování
   const [svj, setSvj] = useState<Svj | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,31 +50,6 @@ export function SvjDetailPage() {
     fetchSvjDetail();
   }, [id]); // useEffect se spustí znovu, pokud se změní 'id' v URL
 
-  // Nová funkce pro smazání
-  const handleDelete = async () => {
-    if (!svj) return;
-
-    const isConfirmed = window.confirm(`Opravdu chcete smazat SVJ "${svj.name}"?`);
-    if (isConfirmed) {
-      setLoading(true);
-      try {
-        const { error } = await supabase
-          .from('svj')
-          .delete()
-          .eq('id', svj.id);
-        
-        if (error) throw error;
-
-        alert('SVJ bylo úspěšně smazáno.');
-        navigate('/svj'); // Přesměrování na seznam
-      } catch (error: any) {
-        setError(error.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
   if (loading) return <p>Načítání detailu SVJ...</p>;
   if (error) return <p>Chyba: {error}</p>;
   if (!svj) return <p>SVJ nebylo nalezeno.</p>;
@@ -106,20 +80,6 @@ export function SvjDetailPage() {
             <h3 className="font-semibold text-gray-600">Datová schránka</h3>
             <p className="text-lg">{svj.data_box_id || 'Není uvedeno'}</p>
           </div>
-        </div>
-
-        {/* Sekce s akcemi - editace a mazání */}
-        <div className="mt-8 pt-6 border-t flex gap-4">
-          <Link to={`/svj/${svj.id}/edit`} className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
-            Upravit
-          </Link>
-          <button 
-            onClick={handleDelete} 
-            disabled={loading}
-            className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50"
-          >
-            {loading ? 'Mazání...' : 'Smazat'}
-          </button>
         </div>
       </div>
     </div>

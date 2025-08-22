@@ -45,74 +45,59 @@ export function SvjNewPage() {
   };
 
   return (
-    <div className="p-4 max-w-2xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Přidat nové SVJ</h1>
-        <Link to="/svj" className="text-blue-500 hover:underline">
-          &larr; Zpět na seznam
-        </Link>
-      </div>
+    <div>
+      <h1>Přidat nové SVJ</h1>
+      <Link to="/svj">&larr; Zpět na seznam</Link>
       
-      <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6 space-y-4">
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700">Název SVJ</label>
+      <form onSubmit={handleSubmit}>
+        <label>
+          Název SVJ:
           <input
             type="text"
-            id="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
           />
-        </div>
-        <div>
-          <label htmlFor="ico" className="block text-sm font-medium text-gray-700">IČO</label>
+        </label>
+        <label>
+          IČO:
           <input
             type="text"
-            id="ico"
             value={ico}
             onChange={(e) => setIco(e.target.value)}
             required
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
           />
-        </div>
-        <div>
-          <label htmlFor="address" className="block text-sm font-medium text-gray-700">Adresa</label>
+        </label>
+        <label>
+          Adresa:
           <input
             type="text"
-            id="address"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
           />
-        </div>
-        <div>
-          <label htmlFor="bankAccount" className="block text-sm font-medium text-gray-700">Bankovní účet</label>
+        </label>
+        <label>
+          Bankovní účet:
           <input
             type="text"
-            id="bankAccount"
             value={bankAccount}
             onChange={(e) => setBankAccount(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
           />
-        </div>
-        <div>
-          <label htmlFor="dataBoxId" className="block text-sm font-medium text-gray-700">Datová schránka</label>
+        </label>
+        <label>
+          Datová schránka:
           <input
             type="text"
-            id="dataBoxId"
             value={dataBoxId}
             onChange={(e) => setDataBoxId(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
           />
-        </div>
+        </label>
         
-        {error && <p className="text-red-500 text-sm">Chyba: {error}</p>}
+        {error && <p>Chyba: {error}</p>}
         
         <button
           type="submit"
           disabled={loading}
-          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
         >
           {loading ? 'Ukládání...' : 'Uložit SVJ'}
         </button>

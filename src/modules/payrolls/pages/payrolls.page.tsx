@@ -2,11 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/supabaseClient';
 
-// Typová definice pro mzdu
 interface Payroll {
   id: string;
-  employee_id: string;
-  svj_id: string;
   month: number;
   year: number;
   gross_wage: number;
@@ -23,19 +20,12 @@ export function PayrollsPage() {
     const fetchPayrolls = async () => {
       try {
         setLoading(true);
-        // Poznámka: Prozatím načítáme všechny mzdy. V budoucnu bychom mohli přidat filtrování.
-        // Také bychom mohli chtít načíst jména zaměstnanců, ale to vyžaduje složitější dotaz (JOIN),
-        // ke kterému se dostaneme později.
         const { data, error } = await supabase
           .from('payrolls')
           .select('*')
           .order('year', { ascending: false })
           .order('month', { ascending: false });
-
-        if (error) {
-          throw error;
-        }
-
+        if (error) throw error;
         setPayrolls(data as Payroll[]);
       } catch (error: any) {
         setError(error.message);
@@ -43,7 +33,6 @@ export function PayrollsPage() {
         setLoading(false);
       }
     };
-
     fetchPayrolls();
   }, []);
 
@@ -52,7 +41,6 @@ export function PayrollsPage() {
 
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Přehled mezd</h1>
       <div className="bg-white shadow rounded-lg">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -78,8 +66,7 @@ export function PayrollsPage() {
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  {/* Tento odkaz bude fungovat až implementujeme detail mzdy */}
-                  <Link to={`/payroll/${payroll.id}`} className="text-indigo-600 hover:text-indigo-900">
+                  <Link to={`/payrolls/${payroll.id}`} className="text-indigo-600 hover:text-indigo-900">
                     Zobrazit
                   </Link>
                 </td>
