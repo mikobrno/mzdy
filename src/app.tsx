@@ -1,7 +1,7 @@
 import { Route, Routes } from 'react-router-dom';
 import { Layout } from './components/layout/layout';
 import { ProtectedRoute } from './components/auth/protected-route';
-import { DashboardPage } from './pages/dashboard';
+import DashboardPage from './pages/dashboard';
 import { SvjPage, SvjDetailPage, SvjNewPage, SvjEditPage } from './modules/svj';
 import { EmployeesPage, EmployeeDetailPage, EmployeeNewPage, EmployeeEditPage } from './modules/employees';
 import { PayrollsPage, PayrollNewPage, PayrollDetailPage, PayrollEditPage } from './modules/payrolls';
