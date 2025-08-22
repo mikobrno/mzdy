@@ -1,40 +1,18 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { gql, useMutation } from '@apollo/client';
+import { apiService } from '@/services/api'
 
-const UPDATE_PAYROLL = gql`
-  mutation UpdatePayroll($id: ID!, $input: PayrollInput!) {
-    updatePayroll(id: $id, input: $input) {
-      id
-      status
-    }
-  }
-`;
-
-const APPROVE_PAYROLL = gql`
-  mutation ApprovePayroll($id: ID!) {
-    approvePayroll(id: $id) {
-      id
-      status
-    }
-  }
-`;
+// GraphQL mutations removed — using Supabase via apiService
 
 export default function PayrollDetailModal({ isOpen, onClose, payrollDetails, isEditable, refetch }) {
-  const [updatePayroll] = useMutation(UPDATE_PAYROLL);
-  const [approvePayroll] = useMutation(APPROVE_PAYROLL);
+  // Use apiService methods instead of Apollo mutations
 
   const handleSaveChanges = async () => {
     try {
-      await updatePayroll({
-        variables: {
-          id: payrollDetails.id,
-          input: {
-            deductions: payrollDetails.deductions,
-            bonuses: payrollDetails.bonuses,
-          },
-        },
-      });
+      await apiService.updatePayroll(payrollDetails.id, {
+        deductions: payrollDetails.deductions,
+        bonuses: payrollDetails.bonuses
+      })
       alert('Změny byly úspěšně uloženy.');
       onClose();
       refetch();
@@ -46,7 +24,7 @@ export default function PayrollDetailModal({ isOpen, onClose, payrollDetails, is
 
   const handleApprovePayroll = async () => {
     try {
-      await approvePayroll({ variables: { id: payrollDetails.id } });
+  await apiService.updatePayrollStatus(payrollDetails.id, 'approved')
       alert('Mzda byla úspěšně schválena.');
       onClose();
       refetch();

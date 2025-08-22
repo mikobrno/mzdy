@@ -78,6 +78,18 @@ class SupabaseApiService {
     return data
   }
 
+  async updatePayroll(id: string, payload: any): Promise<any> {
+    const { data, error } = await supabase.from('payrolls').update(payload).eq('id', id).select().single()
+    if (error) throw error
+    return data
+  }
+
+  async updatePayrollStatus(id: string, status: string): Promise<any> {
+    const { data, error } = await supabase.from('payrolls').update({ status }).eq('id', id).select().single()
+    if (error) throw error
+    return data
+  }
+
   async getDashboardStats(): Promise<DashboardStats> {
     const { data: svjData } = await supabase.from('svj').select('id', { count: 'exact' })
     const { data: empData } = await supabase.from('employees').select('id', { count: 'exact' }).eq('is_active', true)
