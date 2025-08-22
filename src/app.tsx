@@ -10,9 +10,13 @@ import { PdfTemplatesPage } from './modules/pdf-templates';
 import { ExecutionsPage } from './modules/executions';
 import { PayrollDeductionsPage } from './modules/payroll-deductions';
 import { LoginPage } from './pages/login.page';
+import { useAuth } from '@/hooks/use-auth'; // use consistent import
 
 // Komponenta, která seskupuje všechny chráněné stránky
 function ProtectedPages() {
+  const { user, isLoading } = useAuth();
+  console.log("Stav autentizace:", { user, isLoading });
+
   return (
     <ProtectedRoute>
       <Layout>
