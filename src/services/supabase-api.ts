@@ -64,6 +64,14 @@ class SupabaseApiService {
     return data as any[]
   }
 
+  async getPayrollsByEmployee(employeeId: string, year: number, month?: number): Promise<any[]> {
+    let q = supabase.from('payrolls').select('*').eq('employee_id', employeeId).eq('year', year)
+    if (month) q = q.eq('month', month)
+    const { data, error } = await q
+    if (error) throw error
+    return data as any[]
+  }
+
   async createSalaryRecord(payload: any): Promise<any> {
     const { data, error } = await supabase.from('payrolls').insert([payload]).select().single()
     if (error) throw error

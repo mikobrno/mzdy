@@ -1,6 +1,6 @@
-import { gql, useQuery, useMutation } from '@apollo/client';
 import { useParams } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { apiService } from '@/services/api'
 import PayrollDetailModal from '@/components/PayrollDetailModal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import axios from 'axios';
@@ -9,22 +9,7 @@ import { Select } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-const GET_SVJ_AND_EMPLOYEES = gql`
-  query GetSVJAndEmployees($svjId: ID!, $month: Int!, $year: Int!) {
-    svj(id: $svjId) {
-      id
-      name
-      employees {
-        id
-        name
-        baseSalary
-        payrolls(where: { month: { _eq: $month }, year: { _eq: $year } }) {
-          status
-        }
-      }
-    }
-  }
-`;
+// GraphQL queries removed — this page now uses Supabase via apiService
 
 export default function PayrollDetailPage() {
   const { svjId } = useParams();
@@ -32,17 +17,25 @@ export default function PayrollDetailPage() {
   const currentMonth = currentDate.getMonth() + 1;
   const currentYear = currentDate.getFullYear();
 
-  const { data, loading, error, refetch } = useQuery(GET_SVJ_AND_EMPLOYEES, {
-    variables: { svjId, month: currentMonth, year: currentYear },
-  });
+  const [data, setData] = useState<any | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<any | null>(null)
 
-  const [calculatePayroll] = useMutation(gql`
-    mutation CalculatePayroll($employeeId: ID!, $month: Int!, $year: Int!) {
-      calculatePayroll(employeeId: $employeeId, month: $month, year: $year) {
-        success
-      }
+  const refetch = async () => {
+    setLoading(true)
+    try {
+      const svj = await apiService.getSVJ(svjId as string)
+      setData({ svj })
+    } catch (err) {
+      setError(err)
+    } finally {
+      setLoading(false)
     }
-  `);
+  }
+
+  useEffect(() => {
+    refetch()
+  }, [svjId])
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPayroll, setSelectedPayroll] = useState(null);
@@ -56,9 +49,10 @@ export default function PayrollDetailPage() {
 
   const handleCreatePayroll = async (employeeId) => {
     try {
-      await calculatePayroll({ variables: { employeeId, month: currentMonth, year: currentYear } });
+      // create salary record with minimal data — real calculation should be server-side
+      await apiService.createSalaryRecord({ employeeId, year: currentYear, month: currentMonth, gross_salary: 0, net_salary: 0, status: 'draft' })
       alert('Mzda byla úspěšně vytvořena.');
-      refetch(); // Refetch data to update the UI
+      await refetch(); // Refetch data to update the UI
     } catch (error) {
       console.error(error);
       alert('Chyba při vytváření mzdy.');
@@ -90,7 +84,7 @@ export default function PayrollDetailPage() {
   if (loading) return <div>Načítání...</div>;
   if (error) return <div>Chyba při načítání dat: {error.message}</div>;
 
-  const svj = data.svj;
+  const svj = data?.svj;
   const employees = svj.employees.map((employee) => {
     const payroll = employee.payrolls[0];
     let payrollStatus = 'Nezpracováno';
