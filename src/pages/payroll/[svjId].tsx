@@ -4,10 +4,10 @@ import { useState } from 'react';
 import PayrollDetailModal from '@/components/PayrollDetailModal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import axios from 'axios';
-import Dialog from '@/components/ui/dialog';
-import Select from '@/components/ui/select';
-import Input from '@/components/ui/input';
-import Label from '@/components/ui/label';
+import { Dialog } from '@/components/ui/dialog';
+import { Select } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const GET_SVJ_AND_EMPLOYEES = gql`
   query GetSVJAndEmployees($svjId: ID!, $month: Int!, $year: Int!) {

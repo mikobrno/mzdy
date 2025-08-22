@@ -57,11 +57,9 @@ export default function PayrollDetailModal({ isOpen, onClose, payrollDetails, is
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog isOpen={isOpen} onClose={onClose}>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Detail mzdy</DialogTitle>
-        </DialogHeader>
+        <DialogHeader title={"Detail mzdy"} />
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium">Hrubá mzda</label>
@@ -106,7 +104,7 @@ export default function PayrollDetailModal({ isOpen, onClose, payrollDetails, is
             />
           </div>
         </div>
-        <DialogFooter>
+  <DialogFooter>
           {isEditable && (
             <button
               className="px-4 py-2 bg-gray-200 rounded-md"

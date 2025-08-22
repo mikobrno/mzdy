@@ -7,3 +7,8 @@ declare module '@apollo/client' {
   export const createHttpLink: any
   export const setContext: any
 }
+
+declare module '@apollo/client/link/context' {
+  export const setContext: any
+}
+
