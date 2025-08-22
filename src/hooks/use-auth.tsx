@@ -60,6 +60,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true
+
+    // Dev bypass: pokud je nastavena promenná VITE_DEV_BYPASS=true, preskocime
+    // sign-in a nastavime demo uzivatele (jen pro vyvoj). Napojeni na
+    // Supabase zustava neni zmeneno.
+    const devBypass = (import.meta.env as any).VITE_DEV_BYPASS === 'true'
+    if (devBypass) {
+      if (mounted) {
+        setUser(mockUsers['admin@example.com'])
+        setIsLoading(false)
+      }
+      return () => {
+        mounted = false
+      }
+    }
+
     const init = async () => {
       try {
         const { data } = await supabase.auth.getSession()
