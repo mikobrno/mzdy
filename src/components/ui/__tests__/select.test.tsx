@@ -1,6 +1,6 @@
 import React from 'react';
 import { render } from '@testing-library/react';
-import Select from '../select';
+import { Select } from '../select';
 
 test('renders Select component', () => {
   const options = [
