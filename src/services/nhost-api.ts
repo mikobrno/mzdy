@@ -19,7 +19,7 @@ import { SVJ, Employee, SalaryRecord, EmailTemplate, DashboardStats } from '@/ty
 
 class NhostApiService {
   // SVJ endpoints
-  async getSVJList(): Promise<SVJ[]> {
+  async getSVJList(): Promise<any[]> {
     const { data } = await apolloClient.query({
       query: GET_SVJ_LIST,
       fetchPolicy: 'cache-first'
@@ -28,7 +28,7 @@ class NhostApiService {
     return data.svjs.map(this.mapNhostSVJ)
   }
 
-  async getSVJ(id: string): Promise<SVJ | null> {
+  async getSVJ(id: string): Promise<any | null> {
     try {
       const { data } = await apolloClient.query({
         query: GET_SVJ_DETAIL,
@@ -43,14 +43,14 @@ class NhostApiService {
     }
   }
 
-  async createSVJ(data: Omit<SVJ, 'id' | 'createdAt' | 'updatedAt'>): Promise<SVJ> {
+  async createSVJ(data: Omit<SVJ, 'id' | 'createdAt' | 'updatedAt'>): Promise<any> {
     const { data: result } = await apolloClient.mutate({
       mutation: CREATE_SVJ,
       variables: {
         data: {
           name: data.name,
           ico: data.ico,
-          dic: data.dic,
+          dic: (data as any).dic,
           address: data.address,
           bank_account: data.bankAccount,
           contact_person: data.contactPerson,
@@ -63,7 +63,7 @@ class NhostApiService {
     return this.mapNhostSVJ(result.insert_svjs_one)
   }
 
-  async updateSVJ(id: string, data: Partial<SVJ>): Promise<SVJ> {
+  async updateSVJ(id: string, data: Partial<SVJ>): Promise<any> {
     const { data: result } = await apolloClient.mutate({
       mutation: UPDATE_SVJ,
       variables: {
@@ -71,7 +71,7 @@ class NhostApiService {
         data: {
           name: data.name,
           ico: data.ico,
-          dic: data.dic,
+          dic: (data as any).dic,
           address: data.address,
           bank_account: data.bankAccount,
           contact_person: data.contactPerson,
@@ -85,7 +85,7 @@ class NhostApiService {
   }
 
   // Employees endpoints
-  async getEmployees(svjId?: string): Promise<Employee[]> {
+  async getEmployees(svjId?: string): Promise<any[]> {
     const { data } = await apolloClient.query({
       query: GET_EMPLOYEES,
       variables: { svjId },
@@ -95,7 +95,7 @@ class NhostApiService {
     return data.employees.map(this.mapNhostEmployee)
   }
 
-  async getEmployee(id: string): Promise<Employee | null> {
+  async getEmployee(id: string): Promise<any | null> {
     try {
       const { data } = await apolloClient.query({
         query: GET_EMPLOYEE_DETAIL,
@@ -110,7 +110,7 @@ class NhostApiService {
     }
   }
 
-  async createEmployee(data: Partial<Employee>): Promise<Employee> {
+  async createEmployee(data: Partial<Employee>): Promise<any> {
     const { data: result } = await apolloClient.mutate({
       mutation: CREATE_EMPLOYEE,
       variables: {
@@ -136,7 +136,7 @@ class NhostApiService {
     return this.mapNhostEmployee(result.insert_employees_one)
   }
 
-  async updateEmployee(id: string, data: Partial<Employee>): Promise<Employee> {
+  async updateEmployee(id: string, data: Partial<Employee>): Promise<any> {
     const { data: result } = await apolloClient.mutate({
       mutation: UPDATE_EMPLOYEE,
       variables: {
@@ -197,7 +197,7 @@ class NhostApiService {
     return data.svjs_by_pk
   }
 
-  async getSalaryRecords(svjId: string, year: number, month?: number): Promise<SalaryRecord[]> {
+  async getSalaryRecords(svjId: string, year: number, month?: number): Promise<any[]> {
     // Implementation using GraphQL
     const { data } = await apolloClient.query({
       query: GET_PAYROLL_DETAIL,
@@ -208,7 +208,7 @@ class NhostApiService {
     return data.payrolls.map(this.mapNhostPayroll)
   }
 
-  async createSalaryRecord(data: Omit<SalaryRecord, 'id' | 'createdAt'>): Promise<SalaryRecord> {
+  async createSalaryRecord(data: Omit<SalaryRecord, 'id' | 'createdAt'>): Promise<any> {
     const { data: result } = await apolloClient.mutate({
       mutation: CREATE_PAYROLL,
       variables: {
@@ -218,12 +218,12 @@ class NhostApiService {
           month: data.month,
           gross_salary: data.grossSalary,
           net_salary: data.netSalary,
-          total_deductions: data.totalDeductions,
-          income_tax: data.incomeTax,
-          health_insurance_employee: data.healthInsuranceEmployee,
-          health_insurance_employer: data.healthInsuranceEmployer,
-          social_insurance_employee: data.socialInsuranceEmployee,
-          social_insurance_employer: data.socialInsuranceEmployer,
+          total_deductions: (data as any).totalDeductions ?? 0,
+          income_tax: (data as any).incomeTax ?? 0,
+          health_insurance_employee: (data as any).healthInsuranceEmployee ?? 0,
+          health_insurance_employer: (data as any).healthInsuranceEmployer ?? 0,
+          social_insurance_employee: (data as any).socialInsuranceEmployee ?? 0,
+          social_insurance_employer: (data as any).socialInsuranceEmployer ?? 0,
           status: data.status || 'draft'
         }
       }
@@ -336,12 +336,12 @@ class NhostApiService {
   }
 
   // Helper methods for mapping Nhost data to our types
-  private mapNhostSVJ(nhostSvj: any): SVJ {
+  private mapNhostSVJ(nhostSvj: any): any {
     return {
       id: nhostSvj.id,
       name: nhostSvj.name,
       ico: nhostSvj.ico,
-      dic: nhostSvj.dic,
+  dic: (nhostSvj as any).dic,
       address: nhostSvj.address,
       bankAccount: nhostSvj.bank_account,
       contactPerson: nhostSvj.contact_person,
@@ -359,7 +359,7 @@ class NhostApiService {
     }
   }
 
-  private mapNhostEmployee(nhostEmployee: any): Employee {
+  private mapNhostEmployee(nhostEmployee: any): any {
     return {
       id: nhostEmployee.id,
       svjId: nhostEmployee.svj_id,
@@ -384,7 +384,7 @@ class NhostApiService {
     }
   }
 
-  private mapNhostPayroll(nhostPayroll: any): SalaryRecord {
+  private mapNhostPayroll(nhostPayroll: any): any {
     return {
       id: nhostPayroll.id,
       employeeId: nhostPayroll.employee_id,
@@ -392,7 +392,7 @@ class NhostApiService {
       month: nhostPayroll.month,
       grossSalary: nhostPayroll.gross_salary,
       netSalary: nhostPayroll.net_salary,
-      totalDeductions: nhostPayroll.total_deductions,
+  totalDeductions: (nhostPayroll as any).total_deductions,
       incomeTax: nhostPayroll.income_tax,
       healthInsuranceEmployee: nhostPayroll.health_insurance_employee,
       healthInsuranceEmployer: nhostPayroll.health_insurance_employer,
