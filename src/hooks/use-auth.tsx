@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext, createContext, ReactNode } from 'react'
 import { User } from '@/types'
-import { nhost } from '@/lib/nhost'
+import { supabase } from '@/lib/supabase'
 
 interface AuthContextType {
   user: User | null
@@ -13,66 +13,97 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+// Mock uživatelé pro testování
+const mockUsers: { [email: string]: User } = {
+  'admin@example.com': {
+    id: '1',
+    email: 'admin@example.com',
+    firstName: 'Jan',
+    lastName: 'Novák',
+    role: 'super_admin' as any,
+    permissions: ['read_all', 'write_all', 'admin'],
+    isActive: true,
+    createdAt: new Date()
+  },
+  'ucetni@example.com': {
+    id: '2',
+    email: 'ucetni@example.com',
+    firstName: 'Marie',
+    lastName: 'Svobodová',
+    role: 'payroll_accountant' as any,
+    permissions: ['payroll_read', 'payroll_write', 'employees_read'],
+    isActive: true,
+    createdAt: new Date()
+  },
+  'manazer@example.com': {
+    id: '3',
+    email: 'manazer@example.com',
+    firstName: 'Petr',
+    lastName: 'Dvořák',
+    role: 'committee_member' as any,
+    permissions: ['employees_read', 'svj_read'],
+    isActive: true,
+    createdAt: new Date()
+  }
+}
+
+// Mock hesla
+const mockPasswords: { [email: string]: string } = {
+  'admin@example.com': 'admin123',
+  'ucetni@example.com': 'ucetni123',
+  'manazer@example.com': 'manazer123'
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     let mounted = true
-
-    // Inicializace - kontrola aktuálního session
-    const initAuth = () => {
-      if (!mounted) return
-      
-      const nhostUser = nhost.auth.getUser()
-      if (nhostUser) {
-        setUser(mapNhostUser(nhostUser))
+    const init = async () => {
+      try {
+        const { data } = await supabase.auth.getSession()
+        const session = data.session
+        if (mounted && session?.user) {
+          const mapped = mapSupabaseUser(session.user)
+          setUser(mapped)
+        }
+      } finally {
+        if (mounted) setIsLoading(false)
       }
-      setIsLoading(false)
     }
+    init()
 
-    initAuth()
-
-    // Listener na změny auth stavu
-    const unsubscribe = nhost.auth.onAuthStateChanged((_event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return
-      
       if (session?.user) {
-        setUser(mapNhostUser(session.user))
+        setUser(mapSupabaseUser(session.user))
       } else {
         setUser(null)
       }
-      setIsLoading(false)
     })
 
     return () => {
       mounted = false
-      unsubscribe()
+      sub.subscription.unsubscribe()
     }
   }, [])
 
   const login = async (email: string, password: string) => {
     setIsLoading(true)
     try {
-      const { session, error } = await nhost.auth.signIn({ email, password })
-      
-      if (error) {
-        throw new Error(error.message)
+      const { error, data } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) throw error
+      if (data.session?.user) {
+        setUser(mapSupabaseUser(data.session.user))
       }
-      
-      if (session?.user) {
-        setUser(mapNhostUser(session.user))
-      }
-    } catch (error) {
-      console.error('Login error:', error)
-      throw error
     } finally {
       setIsLoading(false)
     }
   }
 
   const logout = async () => {
-    await nhost.auth.signOut()
+    await supabase.auth.signOut()
     setUser(null)
   }
 
@@ -88,21 +119,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return roles.includes(user.role as any)
   }
 
-  function mapNhostUser(nhostUser: any): User {
-    // Mapování Nhost uživatele na naši User interface
-    // Můžeme použít metadata nebo dodatečné query na users tabulku
-    const role = nhostUser.metadata?.role || 'employee'
-    const permissions: string[] = nhostUser.metadata?.permissions || []
-    
+  function mapSupabaseUser(sUser: { id: string; email?: string | null; user_metadata?: any }): User {
+    // Zde lze doplnit fetch na profilovou tabulku (např. profiles) pro role/permissions
+    const role = sUser.user_metadata?.role || 'employee'
+    const permissions: string[] = sUser.user_metadata?.permissions || []
     return {
-      id: nhostUser.id,
-      email: nhostUser.email || '',
-      firstName: nhostUser.metadata?.firstName || nhostUser.displayName?.split(' ')[0] || '',
-      lastName: nhostUser.metadata?.lastName || nhostUser.displayName?.split(' ').slice(1).join(' ') || '',
+      id: sUser.id,
+      email: sUser.email || '',
+      firstName: sUser.user_metadata?.firstName || '',
+      lastName: sUser.user_metadata?.lastName || '',
       role,
       permissions,
       isActive: true,
-      createdAt: new Date(nhostUser.createdAt)
+      createdAt: new Date()
     }
   }
 
