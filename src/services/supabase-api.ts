@@ -52,6 +52,10 @@ class SupabaseApiService {
     return data
   }
 
+  async terminateEmployee(employeeId: string): Promise<void> {
+    await supabase.from('employees').update({ is_active: false, end_date: new Date().toISOString() }).eq('id', employeeId)
+  }
+
   async getSalaryRecords(svjId: string, year: number, month?: number): Promise<any[]> {
     let q = supabase.from('payrolls').select('*').eq('svj_id', svjId).eq('year', year)
     if (month) q = q.eq('month', month)
