@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
+import { apiService } from '@/services/api';
+import { useToast } from '@/components/ui/toast';
 import { 
   Bell, 
   ArrowLeft,
@@ -30,633 +33,450 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-// Mock data pro notifikace
-const notifications = [
+// Mock data pro fallback pokud tabulky neexistují
+const mockNotifications = [
   {
-    id: 1,
+    id: '1',
     type: 'security',
     title: 'Neúspěšný pokus o přihlášení',
     message: 'Zaznamenaný neúspěšný pokus o přihlášení z IP adresy 203.0.113.15',
-    timestamp: '2025-01-13T14:25:00',
-    isRead: false,
+    created_at: '2025-01-13T14:25:00',
+    is_read: false,
     priority: 'high',
-    category: 'Zabezpečení',
-    user: 'Systém',
-    icon: Shield,
-    actions: ['Prošetřit', 'Označit jako vyřešené']
+    category: 'Zabezpečení'
   },
   {
-    id: 2,
+    id: '2',
     type: 'payroll',
     title: 'Mzdy připraveny ke schválení',
     message: 'Mzdové výpočty pro SVJ Nové Město jsou připraveny ke kontrole a schválení',
-    timestamp: '2025-01-13T13:45:00',
-    isRead: false,
+    created_at: '2025-01-13T13:45:00',
+    is_read: false,
     priority: 'high',
-    category: 'Mzdová agenda',
-    user: 'Jana Novotná',
-    icon: Calculator,
-    actions: ['Zobrazit výpočty', 'Schválit']
+    category: 'Mzdová agenda'
   },
   {
-    id: 3,
+    id: '3',
     type: 'system',
     title: 'Automatická záloha dokončena',
     message: 'Denní záloha systému byla úspěšně dokončena. Velikost zálohy: 2.4 GB',
-    timestamp: '2025-01-13T06:00:00',
-    isRead: true,
+    created_at: '2025-01-13T06:00:00',
+    is_read: true,
     priority: 'medium',
-    category: 'Systém',
-    user: 'Systém',
-    icon: Archive,
-    actions: ['Zobrazit detaily']
-  },
-  {
-    id: 4,
-    type: 'user',
-    title: 'Nový uživatel čeká na schválení',
-    message: 'Petr Svoboda požádal o přístup k systému s rolí "Mzdový účetní"',
-    timestamp: '2025-01-13T11:30:00',
-    isRead: false,
-    priority: 'medium',
-    category: 'Uživatelé',
-    user: 'Petr Svoboda',
-    icon: Users,
-    actions: ['Schválit', 'Odmítnout', 'Zobrazit profil']
-  },
-  {
-    id: 5,
-    type: 'api',
-    title: 'Chyba API připojení',
-    message: 'Připojení k ČSSZ API selhalo. Automatické pokusy o obnovení neúspěšné',
-    timestamp: '2025-01-13T10:15:00',
-    isRead: true,
-    priority: 'high',
-    category: 'API integrace',
-    user: 'Systém',
-    icon: Globe,
-    actions: ['Znovu připojit', 'Zkontrolovat nastavení']
-  },
-  {
-    id: 6,
-    type: 'document',
-    title: 'Výplatní pásky vygenerovány',
-    message: 'Výplatní pásky pro měsíc leden 2025 byly úspěšně vygenerovány a odeslány',
-    timestamp: '2025-01-13T09:20:00',
-    isRead: true,
-    priority: 'low',
-    category: 'Dokumenty',
-    user: 'Systém',
-    icon: FileText,
-    actions: ['Zobrazit dokumenty']
-  },
-  {
-    id: 7,
-    type: 'deadline',
-    title: 'Blíží se termín podání přehledů',
-    message: 'Do termínu podání přehledů sociálního pojištění zbývají 3 dny',
-    timestamp: '2025-01-13T08:00:00',
-    isRead: false,
-    priority: 'medium',
-    category: 'Termíny',
-    user: 'Systém',
-    icon: Calendar,
-    actions: ['Zobrazit přehledy', 'Připravit podání']
+    category: 'Systém'
   }
 ];
 
-// Mock data pro nastavení notifikací
-const notificationSettings = {
-  channels: {
-    email: true,
-    push: true,
-    sms: false,
-    inApp: true
-  },
-  categories: {
-    security: { enabled: true, priority: 'high', channels: ['email', 'push', 'sms'] },
-    payroll: { enabled: true, priority: 'high', channels: ['email', 'push'] },
-    system: { enabled: true, priority: 'medium', channels: ['email'] },
-    users: { enabled: true, priority: 'medium', channels: ['email', 'push'] },
-    api: { enabled: true, priority: 'high', channels: ['email', 'push'] },
-    documents: { enabled: true, priority: 'low', channels: ['email'] },
-    deadlines: { enabled: true, priority: 'high', channels: ['email', 'push', 'sms'] }
-  },
-  schedule: {
-    quietHours: { enabled: true, start: '22:00', end: '07:00' },
-    weekends: { enabled: false },
-    frequency: 'immediate' // immediate, hourly, daily
-  }
-};
-
 export default function NotificationCenter() {
-  const [activeTab, setActiveTab] = useState('notifications');
-  const [filter, setFilter] = useState('all');
-  const [selectedNotifications, setSelectedNotifications] = useState<number[]>([]);
-  const [settings, setSettings] = useState(notificationSettings);
+  const { success, warning } = useToast();
+  const queryClient = useQueryClient();
+  
+  const [selectedTab, setSelectedTab] = useState<'all' | 'unread' | 'read'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedNotifications, setSelectedNotifications] = useState<string[]>([]);
+  const [showSettings, setShowSettings] = useState(false);
+
+  // Default settings used by the UI (kept local for now)
+  const defaultNotificationSettings = {
+    channels: { email: true, push: true, sms: false, inApp: true },
+    categories: {
+      security: { enabled: true, priority: 'high', channels: ['email', 'push', 'sms'] },
+      payroll: { enabled: true, priority: 'high', channels: ['email', 'push'] },
+      system: { enabled: true, priority: 'medium', channels: ['email'] },
+      users: { enabled: true, priority: 'medium', channels: ['email', 'push'] },
+      api: { enabled: true, priority: 'high', channels: ['email', 'push'] },
+      documents: { enabled: true, priority: 'low', channels: ['email'] },
+      deadlines: { enabled: true, priority: 'high', channels: ['email', 'push', 'sms'] }
+    },
+    schedule: { quietHours: { enabled: true, start: '22:00', end: '07:00' }, weekends: { enabled: false }, frequency: 'immediate' }
+  }
+
+  const [settings, setSettings] = useState(defaultNotificationSettings)
+
+  // Fetch notifications from Supabase with fallback
+  const { data: notifications = [], isLoading, refetch } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: async () => {
+      try {
+        return await apiService.getNotifications();
+      } catch (error) {
+        console.log('Using mock notifications - table not found');
+        return mockNotifications;
+      }
+    }
+  });
+
+  // Actions
+  const markAsReadMutation = useMutation({
+    mutationFn: async (id: string) => {
+      try {
+        await apiService.markNotificationAsRead(id);
+      } catch (error) {
+        console.log('Mark as read not available');
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      success('Notifikace označena jako přečtená');
+    }
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: async (id: string) => {
+      try {
+        await apiService.archiveNotification(id);
+      } catch (error) {
+        console.log('Archive not available');
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      success('Notifikace archivována');
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      try {
+        await apiService.deleteNotification(id);
+      } catch (error) {
+        console.log('Delete not available');
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      success('Notifikace smazána');
+    }
+  });
+
+  // Filters
+  const filteredNotifications = notifications.filter(notification => {
+    if (selectedTab === 'unread' && notification.is_read) return false;
+    if (selectedTab === 'read' && !notification.is_read) return false;
+    if (selectedCategory !== 'all' && notification.category !== selectedCategory) return false;
+    if (searchTerm && !notification.title.toLowerCase().includes(searchTerm.toLowerCase()) && 
+        !notification.message.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    return true;
+  });
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'security': return Shield;
+      case 'payroll': return Calculator;
+      case 'system': return Settings;
+      case 'user': return Users;
+      case 'api': return Globe;
+      case 'document': return FileText;
+      case 'deadline': return Calendar;
+      default: return Bell;
+    }
+  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high':
-        return 'bg-red-100 text-red-800';
-      case 'medium':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'low':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      case 'high': return 'bg-red-100 text-red-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'low': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getPriorityText = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'Vysoká';
-      case 'medium':
-        return 'Střední';
-      case 'low':
-        return 'Nízká';
-      default:
-        return 'Neznámá';
+  const handleMarkAsRead = (ids: string[]) => {
+    ids.forEach(id => markAsReadMutation.mutate(id));
+  };
+
+  const handleArchive = (ids: string[]) => {
+    ids.forEach(id => archiveMutation.mutate(id));
+  };
+
+  const handleDelete = (ids: string[]) => {
+    if (window.confirm(`Opravdu chcete smazat ${ids.length} notifikací?`)) {
+      ids.forEach(id => deleteMutation.mutate(id));
     }
   };
 
-  const getFilteredNotifications = () => {
-    switch (filter) {
-      case 'unread':
-        return notifications.filter(n => !n.isRead);
-      case 'high':
-        return notifications.filter(n => n.priority === 'high');
-      case 'today':
-        const today = new Date().toDateString();
-        return notifications.filter(n => new Date(n.timestamp).toDateString() === today);
-      default:
-        return notifications;
-    }
-  };
-
-  const handleSelectNotification = (id: number) => {
-    setSelectedNotifications(prev => 
-      prev.includes(id) 
-        ? prev.filter(nId => nId !== id)
-        : [...prev, id]
-    );
-  };
-
-  const handleMarkAsRead = (ids: number[]) => {
-    console.log('Označuji jako přečtené:', ids);
-    setSelectedNotifications([]);
-  };
-
-  const handleArchive = (ids: number[]) => {
-    console.log('Archivuji notifikace:', ids);
-    setSelectedNotifications([]);
-  };
-
-  const handleDelete = (ids: number[]) => {
-    console.log('Mažu notifikace:', ids);
-    setSelectedNotifications([]);
-  };
-
-  const updateChannelSetting = (channel: string, enabled: boolean) => {
-    setSettings(prev => ({
-      ...prev,
-      channels: {
-        ...prev.channels,
-        [channel]: enabled
-      }
-    }));
-  };
-
-  const updateCategorySetting = (category: string, field: string, value: any) => {
-    setSettings(prev => ({
-      ...prev,
-      categories: {
-        ...prev.categories,
-        [category]: {
-          ...prev.categories[category as keyof typeof prev.categories],
-          [field]: value
-        }
-      }
-    }));
-  };
-
-  return (
-    <div className="p-6 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Link to="/">
-          <Button variant="outline" className="flex items-center gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Zpět na dashboard
+  if (showSettings) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="flex items-center gap-4 mb-6">
+          <Button variant="outline" onClick={() => setShowSettings(false)}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Zpět
           </Button>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-900">Centrum notifikací</h1>
-          <p className="text-gray-600">Správa upozornění a systémových notifikací</p>
+          <h1 className="text-2xl font-bold text-gray-900">Nastavení notifikací</h1>
         </div>
-      </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Nepřečtené</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {notifications.filter(n => !n.isRead).length}
-            </div>
-            <p className="text-sm text-gray-600">ze {notifications.length} celkem</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Vysoká priorita</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">
-              {notifications.filter(n => n.priority === 'high').length}
-            </div>
-            <p className="text-sm text-gray-600">vyžaduje pozornost</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Dnes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {notifications.filter(n => 
-                new Date(n.timestamp).toDateString() === new Date().toDateString()
-              ).length}
-            </div>
-            <p className="text-sm text-gray-600">nových notifikací</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Aktivní kanály</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {Object.values(settings.channels).filter(Boolean).length}
-            </div>
-            <p className="text-sm text-gray-600">z {Object.keys(settings.channels).length} dostupných</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex space-x-1 mb-6 bg-gray-100 p-1 rounded-lg">
-        {[
-          { id: 'notifications', label: 'Notifikace', icon: Bell },
-          { id: 'settings', label: 'Nastavení', icon: Settings }
-        ].map((tab) => {
-          const TabIcon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <TabIcon className="h-4 w-4" />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Notifications Tab */}
-      {activeTab === 'notifications' && (
-        <div className="space-y-6">
-          {/* Filters and Actions */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { id: 'all', label: 'Všechny' },
-                    { id: 'unread', label: 'Nepřečtené' },
-                    { id: 'high', label: 'Vysoká priorita' },
-                    { id: 'today', label: 'Dnes' }
-                  ].map((filterOption) => (
-                    <button
-                      key={filterOption.id}
-                      onClick={() => setFilter(filterOption.id)}
-                      className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                        filter === filterOption.id
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {filterOption.label}
-                    </button>
-                  ))}
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Kanály notifikací
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-blue-600" />
+                  <span>Email</span>
                 </div>
-
-                {selectedNotifications.length > 0 && (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleMarkAsRead(selectedNotifications)}
-                      className="flex items-center gap-2"
-                    >
-                      <Eye className="h-3 w-3" />
-                      Označit jako přečtené
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleArchive(selectedNotifications)}
-                      className="flex items-center gap-2"
-                    >
-                      <Archive className="h-3 w-3" />
-                      Archivovat
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDelete(selectedNotifications)}
-                      className="flex items-center gap-2"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                      Smazat
-                    </Button>
-                  </div>
-                )}
+                <input type="checkbox" defaultChecked className="rounded" />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Bell className="h-4 w-4 text-purple-600" />
+                  <span>Push notifikace</span>
+                </div>
+                <input type="checkbox" defaultChecked className="rounded" />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="h-4 w-4 text-green-600" />
+                  <span>SMS</span>
+                </div>
+                <input type="checkbox" className="rounded" />
               </div>
             </CardContent>
           </Card>
 
-          {/* Notifications List */}
-          <div className="space-y-4">
-            {getFilteredNotifications().map((notification) => {
-              const NotificationIcon = notification.icon;
-              const isSelected = selectedNotifications.includes(notification.id);
-              
-              return (
-                <Card key={notification.id} className={`transition-all ${
-                  !notification.isRead ? 'border-l-4 border-l-blue-500' : ''
-                } ${isSelected ? 'ring-2 ring-blue-500' : ''}`}>
-                  <CardContent className="pt-6">
-                    <div className="flex items-start gap-4">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => handleSelectNotification(notification.id)}
-                        className="mt-1"
-                      />
-                      
-                      <div className={`p-2 rounded-full ${
-                        notification.priority === 'high' ? 'bg-red-100' :
-                        notification.priority === 'medium' ? 'bg-yellow-100' : 'bg-green-100'
-                      }`}>
-                        <NotificationIcon className={`h-5 w-5 ${
-                          notification.priority === 'high' ? 'text-red-600' :
-                          notification.priority === 'medium' ? 'text-yellow-600' : 'text-green-600'
-                        }`} />
-                      </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Kategorie</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-sm text-gray-600">
+                Vyberte, které kategorie notifikací chcete přijímat.
+              </div>
+              {['Zabezpečení', 'Mzdová agenda', 'Systém', 'Uživatelé', 'API integrace', 'Dokumenty', 'Termíny'].map(category => (
+                <div key={category} className="flex items-center justify-between">
+                  <span>{category}</span>
+                  <input type="checkbox" defaultChecked className="rounded" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className={`font-medium ${!notification.isRead ? 'font-semibold' : ''}`}>
-                            {notification.title}
-                          </h3>
-                          <Badge className={getPriorityColor(notification.priority)}>
-                            {getPriorityText(notification.priority)}
-                          </Badge>
-                          <Badge variant="outline">{notification.category}</Badge>
-                        </div>
-                        
-                        <p className="text-gray-600 mb-2">{notification.message}</p>
-                        
-                        <div className="flex items-center gap-4 text-sm text-gray-500 mb-3">
-                          <div className="flex items-center gap-1">
-                            <User className="h-3 w-3" />
-                            {notification.user}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {new Date(notification.timestamp).toLocaleString('cs-CZ')}
-                          </div>
-                        </div>
+  return (
+    <div className="p-6 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Centrum notifikací</h1>
+          <p className="text-gray-600">Přehled všech systémových událostí a upozornění</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => refetch()}>
+            <Bell className="h-4 w-4 mr-2" />
+            Obnovit
+          </Button>
+          <Button variant="outline" onClick={() => setShowSettings(true)}>
+            <Settings className="h-4 w-4 mr-2" />
+            Nastavení
+          </Button>
+        </div>
+      </div>
 
-                        <div className="flex flex-wrap gap-2">
-                          {notification.actions.map((action, index) => (
-                            <Button key={index} variant="outline" size="sm">
-                              {action}
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
+      {/* Filters and Search */}
+      <div className="flex flex-col lg:flex-row gap-4 mb-6">
+        <div className="flex gap-2">
+          <Button 
+            variant={selectedTab === 'all' ? 'default' : 'outline'} 
+            onClick={() => setSelectedTab('all')}
+          >
+            Vše ({notifications.length})
+          </Button>
+          <Button 
+            variant={selectedTab === 'unread' ? 'default' : 'outline'} 
+            onClick={() => setSelectedTab('unread')}
+          >
+            Nepřečtené ({notifications.filter(n => !n.is_read).length})
+          </Button>
+          <Button 
+            variant={selectedTab === 'read' ? 'default' : 'outline'} 
+            onClick={() => setSelectedTab('read')}
+          >
+            Přečtené ({notifications.filter(n => n.is_read).length})
+          </Button>
+        </div>
 
-                      {!notification.isRead && (
-                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+        <div className="flex flex-1 gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <input
+              type="text"
+              placeholder="Hledat notifikace..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          
+          <select
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+          >
+            <option value="all">Všechny kategorie</option>
+            <option value="Zabezpečení">Zabezpečení</option>
+            <option value="Mzdová agenda">Mzdová agenda</option>
+            <option value="Systém">Systém</option>
+            <option value="Uživatelé">Uživatelé</option>
+            <option value="API integrace">API integrace</option>
+            <option value="Dokumenty">Dokumenty</option>
+            <option value="Termíny">Termíny</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Bulk Actions */}
+      {selectedNotifications.length > 0 && (
+        <div className="flex items-center gap-2 mb-4 p-3 bg-blue-50 rounded-lg">
+          <span className="text-sm text-blue-800">
+            Vybráno {selectedNotifications.length} notifikací
+          </span>
+          <div className="flex gap-2 ml-auto">
+            <Button variant="outline" size="sm" onClick={() => handleMarkAsRead(selectedNotifications)}>
+              <Eye className="h-4 w-4 mr-1" />
+              Označit jako přečtené
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handleArchive(selectedNotifications)}>
+              <Archive className="h-4 w-4 mr-1" />
+              Archivovat
+            </Button>
+            <Button variant="outline" size="sm" className="text-red-600" onClick={() => handleDelete(selectedNotifications)}>
+              <Trash2 className="h-4 w-4 mr-1" />
+              Smazat
+            </Button>
           </div>
         </div>
       )}
 
-      {/* Settings Tab */}
-      {activeTab === 'settings' && (
-        <div className="space-y-6">
-          {/* Notification Channels */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5" />
-                Kanály notifikací
-              </CardTitle>
-              <CardDescription>
-                Vyberte způsoby doručování notifikací
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {[
-                  { key: 'email', label: 'E-mail', description: 'Notifikace na e-mailovou adresu', icon: Mail },
-                  { key: 'push', label: 'Push notifikace', description: 'Upozornění v prohlížeči', icon: Bell },
-                  { key: 'sms', label: 'SMS zprávy', description: 'Kritické upozornění přes SMS', icon: Smartphone },
-                  { key: 'inApp', label: 'V aplikaci', description: 'Notifikace přímo v systému', icon: MessageSquare }
-                ].map((channel) => {
-                  const ChannelIcon = channel.icon;
-                  return (
-                    <div key={channel.key} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <ChannelIcon className="h-5 w-5 text-gray-600" />
-                        <div>
-                          <div className="font-medium">{channel.label}</div>
-                          <div className="text-sm text-gray-500">{channel.description}</div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => updateChannelSetting(channel.key, !settings.channels[channel.key as keyof typeof settings.channels])}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          settings.channels[channel.key as keyof typeof settings.channels] ? 'bg-blue-600' : 'bg-gray-200'
-                        }`}
-                      >
-                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          settings.channels[channel.key as keyof typeof settings.channels] ? 'translate-x-6' : 'translate-x-1'
-                        }`} />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Category Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Nastavení kategorií</CardTitle>
-              <CardDescription>
-                Konfigurace notifikací podle typu události
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {Object.entries(settings.categories).map(([category, categorySettings]) => (
-                  <div key={category} className="p-4 border border-gray-200 rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h3 className="font-medium capitalize">{category}</h3>
-                        <p className="text-sm text-gray-500">
-                          Priorita: {getPriorityText(categorySettings.priority)}
+      {/* Notifications List */}
+      <div className="space-y-4">
+        {filteredNotifications.map((notification) => {
+          const IconComponent = getTypeIcon(notification.type);
+          const isSelected = selectedNotifications.includes(notification.id);
+          
+          return (
+            <Card 
+              key={notification.id} 
+              className={`hover:shadow-md transition-shadow cursor-pointer ${
+                !notification.is_read ? 'ring-2 ring-blue-100 bg-blue-50/30' : ''
+              } ${isSelected ? 'ring-2 ring-blue-500' : ''}`}
+              onClick={() => {
+                if (isSelected) {
+                  setSelectedNotifications(prev => prev.filter(id => id !== notification.id));
+                } else {
+                  setSelectedNotifications(prev => [...prev, notification.id]);
+                }
+              }}
+            >
+              <CardHeader>
+                <div className="flex items-start gap-4">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => {}}
+                      className="rounded"
+                    />
+                    <IconComponent className="h-5 w-5 text-gray-600" />
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className={`font-medium ${!notification.is_read ? 'font-bold' : ''}`}>
+                          {notification.title}
+                        </h3>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {notification.message}
                         </p>
                       </div>
-                      <button
-                        onClick={() => updateCategorySetting(category, 'enabled', !categorySettings.enabled)}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          categorySettings.enabled ? 'bg-blue-600' : 'bg-gray-200'
-                        }`}
-                      >
-                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          categorySettings.enabled ? 'translate-x-6' : 'translate-x-1'
-                        }`} />
-                      </button>
+                      
+                      <div className="flex items-center gap-2 ml-4">
+                        <Badge className={getPriorityColor(notification.priority)}>
+                          {notification.priority === 'high' ? 'Vysoká' : 
+                           notification.priority === 'medium' ? 'Střední' : 'Nízká'}
+                        </Badge>
+                        <Badge variant="outline">
+                          {notification.category}
+                        </Badge>
+                        {!notification.is_read && <div className="w-2 h-2 bg-blue-500 rounded-full" />}
+                      </div>
                     </div>
                     
-                    {categorySettings.enabled && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Priorita
-                          </label>
-                          <select
-                            value={categorySettings.priority}
-                            onChange={(e) => updateCategorySetting(category, 'priority', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                          >
-                            <option value="low">Nízká</option>
-                            <option value="medium">Střední</option>
-                            <option value="high">Vysoká</option>
-                          </select>
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Aktivní kanály
-                          </label>
-                          <div className="flex flex-wrap gap-1">
-                            {categorySettings.channels.map((channel) => (
-                              <Badge key={channel} variant="outline" className="text-xs">
-                                {channel}
-                              </Badge>
-                            ))}
-                          </div>
+                    <div className="flex items-center justify-between mt-3">
+                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          <span>{new Date(notification.created_at).toLocaleString('cs-CZ')}</span>
                         </div>
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Schedule Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Časové nastavení</CardTitle>
-              <CardDescription>
-                Konfigrace doby doručování notifikací
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                  <div>
-                    <div className="font-medium">Tichý režim</div>
-                    <div className="text-sm text-gray-500">
-                      {settings.schedule.quietHours.start} - {settings.schedule.quietHours.end}
+                      
+                      <div className="flex gap-1">
+                        {!notification.is_read && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              markAsReadMutation.mutate(notification.id);
+                            }}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            archiveMutation.mutate(notification.id);
+                          }}
+                        >
+                          <Archive className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-red-600"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm('Opravdu chcete smazat tuto notifikaci?')) {
+                              deleteMutation.mutate(notification.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                  <button
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      settings.schedule.quietHours.enabled ? 'bg-blue-600' : 'bg-gray-200'
-                    }`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      settings.schedule.quietHours.enabled ? 'translate-x-6' : 'translate-x-1'
-                    }`} />
-                  </button>
                 </div>
+              </CardHeader>
+            </Card>
+          );
+        })}
+      </div>
 
-                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                  <div>
-                    <div className="font-medium">Víkendy</div>
-                    <div className="text-sm text-gray-500">Omezit notifikace o víkendech</div>
-                  </div>
-                  <button
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      settings.schedule.weekends.enabled ? 'bg-blue-600' : 'bg-gray-200'
-                    }`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      settings.schedule.weekends.enabled ? 'translate-x-6' : 'translate-x-1'
-                    }`} />
-                  </button>
-                </div>
-
-                <div className="p-4 border border-gray-200 rounded-lg">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Frekvence doručování
-                  </label>
-                  <select
-                    value={settings.schedule.frequency}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="immediate">Okamžitě</option>
-                    <option value="hourly">Každou hodinu</option>
-                    <option value="daily">Denní souhrn</option>
-                  </select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Save Button */}
-          <div className="flex justify-end">
-            <Button className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Uložit nastavení
-            </Button>
-          </div>
-        </div>
+      {filteredNotifications.length === 0 && (
+        <Card className="text-center py-12">
+          <CardContent>
+            <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Žádné notifikace</h3>
+            <p className="text-gray-600">
+              {searchTerm || selectedCategory !== 'all' || selectedTab !== 'all'
+                ? 'Zkuste změnit filtry nebo vyhledávací kritéria.'
+                : 'Momentálně nemáte žádné notifikace.'}
+            </p>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

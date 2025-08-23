@@ -1,10 +1,13 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { apiService } from '@/services/api'
+import { useNotifications } from '@/hooks/use-notifications';
 
 // GraphQL mutations removed — using Supabase via apiService
 
 export default function PayrollDetailModal({ isOpen, onClose, payrollDetails, isEditable, refetch }) {
+  const { success, error } = useNotifications();
+  
   // Use apiService methods instead of Apollo mutations
 
   const handleSaveChanges = async () => {
@@ -13,24 +16,24 @@ export default function PayrollDetailModal({ isOpen, onClose, payrollDetails, is
         deductions: payrollDetails.deductions,
         bonuses: payrollDetails.bonuses
       })
-      alert('Změny byly úspěšně uloženy.');
+      success('Změny uloženy', 'Změny byly úspěšně uloženy.');
       onClose();
       refetch();
     } catch (error) {
       console.error(error);
-      alert('Chyba při ukládání změn.');
+      error('Chyba při ukládání', 'Nepodařilo se uložit změny.');
     }
   };
 
   const handleApprovePayroll = async () => {
     try {
   await apiService.updatePayrollStatus(payrollDetails.id, 'approved')
-      alert('Mzda byla úspěšně schválena.');
+      success('Mzda schválena', 'Mzda byla úspěšně schválena.');
       onClose();
       refetch();
     } catch (error) {
       console.error(error);
-      alert('Chyba při schvalování mzdy.');
+      error('Chyba při schvalování', 'Nepodařilo se schválit mzdu.');
     }
   };
 

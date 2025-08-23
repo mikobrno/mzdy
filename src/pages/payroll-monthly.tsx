@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
@@ -24,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { apiService } from '@/services/api'
+import { useToast } from '@/components/ui/toast'
 import { SalaryRecord, Employee, SVJ } from '@/types'
 import { cn } from '@/lib/utils'
 import { templatesService } from '@/services/templates'
@@ -39,84 +40,7 @@ type PayrollEmployee = {
   salaryRecord?: Omit<SalaryRecord, 'status'> & { status: string }
 }
 
-// Mock data pro mzdy konkrétního měsíce a SVJ
-const mockPayrollData = {
-  svjId: '1',
-  year: 2026,
-  month: 1,
-  status: 'ready_for_approval',
-  employees: [
-    {
-      id: '1',
-      firstName: 'Marie',
-      lastName: 'Svobodová',
-      contractType: 'committee_member',
-      salary: 15000,
-      healthInsurance: '111',
-      salaryRecord: {
-        id: '1',
-        employeeId: '1',
-        svjId: '1',
-        year: 2026,
-        month: 1,
-        grossSalary: 15000,
-        netSalary: 12500,
-        healthInsurance: 675,
-        socialInsurance: 975,
-        tax: 850,
-        status: 'prepared',
-        createdBy: 'admin',
-        createdAt: new Date('2026-01-05')
-      }
-    },
-    {
-      id: '2', 
-      firstName: 'Petr',
-      lastName: 'Novák',
-      contractType: 'dpp',
-      salary: 8000,
-      healthInsurance: '201',
-      salaryRecord: {
-        id: '2',
-        employeeId: '2',
-        svjId: '1',
-        year: 2026,
-        month: 1,
-        grossSalary: 8000,
-        netSalary: 7200,
-        healthInsurance: 360,
-        socialInsurance: 0,
-        tax: 440,
-        status: 'prepared',
-        createdBy: 'admin',
-        createdAt: new Date('2026-01-05')
-      }
-    },
-    {
-      id: '3',
-      firstName: 'Jana',
-      lastName: 'Nováková',
-      contractType: 'committee_member',
-      salary: 12000,
-      healthInsurance: '111',
-      salaryRecord: {
-        id: '3',
-        employeeId: '3',
-        svjId: '1',
-        year: 2026,
-        month: 1,
-        grossSalary: 12000,
-        netSalary: 10100,
-        healthInsurance: 540,
-        socialInsurance: 780,
-        tax: 580,
-        status: 'prepared',
-        createdBy: 'admin',
-        createdAt: new Date('2026-01-05')
-      }
-    }
-  ]
-}
+// No more mock data - will fetch from Supabase
 
 export default function PayrollMonthly() {
   const { svjId, year, month } = useParams<{ svjId: string; year: string; month: string }>()
@@ -140,16 +64,60 @@ export default function PayrollMonthly() {
     enabled: !!svjId
   })
 
-  // Mock query pro payroll data
-  const { data: payrollData, isLoading } = useQuery({
-    queryKey: ['payroll', svjId, year, month],
-    queryFn: async () => {
-      // Simulace API volání
-      await new Promise(resolve => setTimeout(resolve, 800))
-      return mockPayrollData
-    },
+  // Real query for payroll data from Supabase
+  const { data: employees } = useQuery({
+    queryKey: ['employees', svjId],
+    queryFn: () => apiService.getEmployees(svjId!),
+    enabled: !!svjId
+  })
+
+  const { data: salaryRecords } = useQuery({
+    queryKey: ['salary-records', svjId, year, month],
+    queryFn: () => apiService.getSalaryRecords(svjId!, parseInt(year!), parseInt(month!)),
     enabled: !!svjId && !!year && !!month
   })
+
+  // Transform data to match UI expectations
+  const payrollData = useMemo(() => {
+    if (!employees || !year || !month) return null
+    
+    const enrichedEmployees = employees.map((emp: any) => {
+      const salaryRecord = salaryRecords?.find((sr: any) => sr.employee_id === emp.id)
+      return {
+        id: emp.id,
+        firstName: emp.full_name?.split(' ')[0] || 'N/A',
+        lastName: emp.full_name?.split(' ').slice(1).join(' ') || 'N/A',
+        contractType: emp.employment_type === 'vybor' ? 'committee_member' : 'dpp',
+        salary: emp.salary_amount || 0,
+        healthInsurance: '111', // Default - could be mapped from emp.health_insurance_company_id
+        salaryRecord: salaryRecord ? {
+          id: salaryRecord.id,
+          employeeId: salaryRecord.employee_id,
+          svjId: svjId!,
+          year: parseInt(year!),
+          month: parseInt(month!),
+          grossSalary: salaryRecord.gross_wage || salaryRecord.base_salary || 0,
+          netSalary: salaryRecord.net_wage || 0,
+          healthInsurance: salaryRecord.health_insurance_amount || 0,
+          socialInsurance: salaryRecord.social_insurance_amount || 0,
+          tax: salaryRecord.tax_advance || 0,
+          status: salaryRecord.status || 'draft',
+          createdBy: 'system',
+          createdAt: new Date(salaryRecord.created_at || Date.now())
+        } : undefined
+      }
+    })
+
+    return {
+      svjId: svjId!,
+      year: parseInt(year!),
+      month: parseInt(month!),
+      status: 'ready_for_approval',
+      employees: enrichedEmployees
+    }
+  }, [employees, salaryRecords, svjId, year, month])
+
+  const isLoading = !payrollData
 
   const updateSalaryMutation = useMutation({
     mutationFn: (data: Partial<SalaryRecord>) => apiService.createSalaryRecord(data as any),
@@ -186,8 +154,52 @@ export default function PayrollMonthly() {
     })
   }
 
-  const handleSaveEmployee = () => {
-    updateSalaryMutation.mutate(editForm)
+  const { success, error: toastError } = useToast()
+
+  const handleSaveEmployee = async () => {
+    try {
+      // find employee object from current payrollData
+      const emp = payrollData.employees.find((e: any) => e.id === editingEmployee)
+
+      // Ensure we have a real UUID employee id for Supabase
+  let employeeId = (editForm as any).employeeId || (editForm as any).employee_id || editingEmployee
+      const isUuid = typeof employeeId === 'string' && /^[0-9a-fA-F-]{36,36}$/.test(employeeId)
+
+      if (!isUuid) {
+        // Create minimal employee in Supabase so FK constraints pass
+        const name = emp ? `${emp.firstName} ${emp.lastName}` : `Employee ${employeeId}`
+        const created = await apiService.createEmployee({
+          svj_id: svj?.id || svjId,
+          full_name: name,
+          salary_amount: (editForm as any).grossSalary || 0,
+          employment_type: emp?.contractType === 'dpp' ? 'dpp' : 'vybor'
+        })
+        employeeId = created.id
+      }
+
+      const payload: any = {
+        employeeId: employeeId,
+        month: editForm.month || parseInt(month!),
+        year: editForm.year || parseInt(year!),
+        // map to accepted status values; keep existing union of statuses
+        status: (editForm as any).status || 'pending',
+        base_salary: (editForm as any).grossSalary ?? 0,
+        bonuses: (editForm as any).bonuses ?? 0,
+        gross_salary: (editForm as any).grossSalary ?? 0,
+        net_salary: (editForm as any).netSalary ?? 0
+      }
+
+      // use mutateAsync so we can await and show feedback
+      await updateSalaryMutation.mutateAsync(payload)
+
+      success('Uloženo', 'Mzdový záznam byl uložen do Supabase')
+      queryClient.invalidateQueries({ queryKey: ['payroll', svjId, year, month] })
+      setEditingEmployee(null)
+      setEditForm({})
+    } catch (err: any) {
+      console.error('Chyba při ukládání mzdy', err)
+      toastError('Chyba při ukládání', err?.message || String(err))
+    }
   }
 
   const handleCancelEdit = () => {

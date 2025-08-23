@@ -1,0 +1,112 @@
+# Supabase REST Client test suite
+# Fill .rest-client.env.json with your keys and choose environment 'local' in REST Client.
+
+### Health - get SVJ list
+GET {{SUPABASE_URL}}/rest/v1/svj?select=*&limit=10
+apikey: {{SUPABASE_ANON_KEY}}
+Authorization: Bearer {{SUPABASE_ANON_KEY}}
+
+### Create SVJ (admin/service role recommended)
+POST {{SUPABASE_URL}}/rest/v1/svj
+Content-Type: application/json
+apikey: {{SUPABASE_SERVICE_ROLE_KEY}}
+Authorization: Bearer {{SUPABASE_SERVICE_ROLE_KEY}}
+Prefer: return=representation
+
+{
+  "id": "11111111-1111-1111-1111-111111111111",
+  "name": "SVJ Test - REST",
+  "ico": "12345678",
+  "address": "Ulice 1, Město",
+  "bank_account": "123456789/0100",
+  "data_box_id": "db-0001",
+  "email": "admin@example.com",
+  "phone_number": "+420600000000",
+  "contact_person": "Admin",
+  "is_active": true
+}
+
+### Get created SVJ
+GET {{SUPABASE_URL}}/rest/v1/svj?id=eq.11111111-1111-1111-1111-111111111111
+apikey: {{SUPABASE_ANON_KEY}}
+Authorization: Bearer {{SUPABASE_ANON_KEY}}
+
+### Create Health Insurance Company
+POST {{SUPABASE_URL}}/rest/v1/health_insurance_companies
+Content-Type: application/json
+apikey: {{SUPABASE_SERVICE_ROLE_KEY}}
+Authorization: Bearer {{SUPABASE_SERVICE_ROLE_KEY}}
+Prefer: return=representation
+
+{
+  "id": "22222222-2222-2222-2222-222222222222",
+  "name": "VZP",
+  "code": "111",
+  "xml_export_format": "vzp"
+}
+
+### Create Employee (requires existing SVJ & HIC)
+POST {{SUPABASE_URL}}/rest/v1/employees
+Content-Type: application/json
+apikey: {{SUPABASE_SERVICE_ROLE_KEY}}
+Authorization: Bearer {{SUPABASE_SERVICE_ROLE_KEY}}
+Prefer: return=representation
+
+{
+  "id": "33333333-3333-3333-3333-333333333333",
+  "svj_id": "11111111-1111-1111-1111-111111111111",
+  "full_name": "Jan Novák",
+  "address": "Ulice 2, Město",
+  "personal_id_number": "800101/1234",
+  "email": "jan.novak@example.com",
+  "phone_number": "+420600000001",
+  "employment_type": "vybor",
+  "salary_amount": 25000.00,
+  "bank_account": "CZ650800000000123456789",
+  "health_insurance_company_id": "22222222-2222-2222-2222-222222222222",
+  "has_signed_tax_declaration": false,
+  "is_active": true,
+  "note": "Test employee"
+}
+
+### Create Payroll
+POST {{SUPABASE_URL}}/rest/v1/payrolls
+Content-Type: application/json
+apikey: {{SUPABASE_SERVICE_ROLE_KEY}}
+Authorization: Bearer {{SUPABASE_SERVICE_ROLE_KEY}}
+Prefer: return=representation
+
+{
+  "id": "44444444-4444-4444-4444-444444444444",
+  "employee_id": "33333333-3333-3333-3333-333333333333",
+  "month": 8,
+  "year": 2025,
+  "status": "pending",
+  "base_salary": 25000.00,
+  "bonuses": 0.00,
+  "gross_salary": 25000.00,
+  "net_salary": 20000.00
+}
+
+### Query payrolls overview (view)
+GET {{SUPABASE_URL}}/rest/v1/v_payrolls_overview?select=*&employee_id=eq.33333333-3333-3333-3333-333333333333
+apikey: {{SUPABASE_ANON_KEY}}
+Authorization: Bearer {{SUPABASE_ANON_KEY}}
+
+### Cleanup - delete test payroll, employee, svj (admin)
+DELETE {{SUPABASE_URL}}/rest/v1/payrolls?id=eq.44444444-4444-4444-4444-444444444444
+apikey: {{SUPABASE_SERVICE_ROLE_KEY}}
+Authorization: Bearer {{SUPABASE_SERVICE_ROLE_KEY}}
+
+DELETE {{SUPABASE_URL}}/rest/v1/employees?id=eq.33333333-3333-3333-3333-333333333333
+apikey: {{SUPABASE_SERVICE_ROLE_KEY}}
+Authorization: Bearer {{SUPABASE_SERVICE_ROLE_KEY}}
+
+DELETE {{SUPABASE_URL}}/rest/v1/svj?id=eq.11111111-1111-1111-1111-111111111111
+apikey: {{SUPABASE_SERVICE_ROLE_KEY}}
+Authorization: Bearer {{SUPABASE_SERVICE_ROLE_KEY}}
+
+# Notes:
+# - Use the service role key only for local testing. Do NOT commit it to source control.
+# - If you can't use service role, try using anon key but ensure RLS policies allow role 'anon' inserts (dev mode).
+# - Run requests in order. REST Client supports sending individual requests or all.

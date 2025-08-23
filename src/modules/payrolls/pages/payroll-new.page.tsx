@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { supabase } from '@/supabaseClient';
+import { apiService } from '@/services/api';
 
 interface Employee {
   id: string;
@@ -22,8 +22,8 @@ export function PayrollNewPage() {
 
   useEffect(() => {
     const fetchEmployees = async () => {
-      const { data, error } = await supabase.from('employees').select('id, full_name');
-      if (data) setEmployees(data);
+      const data = await apiService.getEmployees()
+      if (data) setEmployees(data as Employee[])
     };
     fetchEmployees();
   }, []);
@@ -37,17 +37,15 @@ export function PayrollNewPage() {
       // Zjednodušený výpočet čisté mzdy prozatím
       const netWage = parseFloat(grossWage) * 0.85; 
 
-      const { error } = await supabase.from('payrolls').insert([
-        {
-          employee_id: employeeId,
-          month: month,
-          year: year,
-          gross_wage: parseFloat(grossWage),
-          net_wage: netWage,
-          status: 'pending',
-        },
-      ]);
-      if (error) throw error;
+      const created = await apiService.createSalaryRecord({
+        employee_id: employeeId,
+        month,
+        year,
+        gross_wage: parseFloat(grossWage),
+        net_wage: netWage,
+        status: 'pending',
+      })
+      if (!created) throw new Error('Vytvoření mzdy selhalo')
       alert('Mzda byla úspěšně vytvořena!');
       navigate('/payrolls');
     } catch (error: any) {

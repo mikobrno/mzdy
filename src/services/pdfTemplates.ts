@@ -29,33 +29,68 @@ function saveAll(items: PdfTemplate[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 }
 
+import { apiService } from '@/services/api';
+
 export const pdfTemplatesService = {
-  getAll(): PdfTemplate[] {
-    return load();
+  async getAll(): Promise<PdfTemplate[]> {
+    const rows = await apiService.getPdfTemplates()
+    return (rows || []).map((r: any) => ({
+      id: r.id,
+      name: r.name,
+      fileName: r.file_name || r.fileName || '',
+      fileBase64: r.file_base64 || r.fileBase64 || '',
+      fields: r.fields || [],
+      mapping: r.mapping || {},
+      createdAt: r.created_at || r.createdAt || '' ,
+      updatedAt: r.updated_at || r.updatedAt || ''
+    }))
   },
-  getById(id: string): PdfTemplate | undefined {
-    return load().find(t => t.id === id);
+  async getById(id: string): Promise<PdfTemplate | undefined> {
+    const all = await pdfTemplatesService.getAll()
+    return all.find(t => t.id === id)
   },
-  create(t: Omit<PdfTemplate, 'id' | 'createdAt' | 'updatedAt'>): PdfTemplate {
-    const now = new Date().toISOString().slice(0,10);
-    const item: PdfTemplate = { ...t, id: Math.random().toString(36).slice(2), createdAt: now, updatedAt: now };
-    const all = load();
-    saveAll([item, ...all]);
-    return item;
+  async create(t: Omit<PdfTemplate, 'id' | 'createdAt' | 'updatedAt'>): Promise<PdfTemplate> {
+    const payload = {
+      name: t.name,
+      file_name: t.fileName,
+      file_base64: t.fileBase64,
+      fields: t.fields,
+      mapping: t.mapping,
+    }
+    const r = await apiService.createPdfTemplate(payload)
+    return {
+      id: r.id,
+      name: r.name,
+      fileName: r.file_name,
+      fileBase64: r.file_base64,
+      fields: r.fields || [],
+      mapping: r.mapping || {},
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    }
   },
-  update(id: string, patch: Partial<PdfTemplate>): PdfTemplate | undefined {
-    const all = load();
-    const idx = all.findIndex(t => t.id === id);
-    if (idx === -1) return undefined;
-    const now = new Date().toISOString().slice(0,10);
-    const merged = { ...all[idx], ...patch, updatedAt: now } as PdfTemplate;
-    all[idx] = merged;
-    saveAll(all);
-    return merged;
+  async update(id: string, patch: Partial<PdfTemplate>): Promise<PdfTemplate | undefined> {
+    const payload: any = {}
+    if (patch.name !== undefined) payload.name = patch.name
+    if ((patch as any).fileName !== undefined) payload.file_name = (patch as any).fileName
+    if ((patch as any).fileBase64 !== undefined) payload.file_base64 = (patch as any).fileBase64
+    if (patch.fields !== undefined) payload.fields = patch.fields
+    if (patch.mapping !== undefined) payload.mapping = patch.mapping
+    const r = await apiService.updatePdfTemplate(id, payload)
+    if (!r) return undefined
+    return {
+      id: r.id,
+      name: r.name,
+      fileName: r.file_name,
+      fileBase64: r.file_base64,
+      fields: r.fields || [],
+      mapping: r.mapping || {},
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    }
   },
-  remove(id: string) {
-    const all = load();
-    saveAll(all.filter(t => t.id !== id));
+  async remove(id: string) {
+    await apiService.deletePdfTemplate(id)
   }
 }
 

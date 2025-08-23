@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { supabase } from '@/supabaseClient';
+import { apiService } from '@/services/api';
 
 // Typ pro detail mzdy, který zahrnuje i jméno zaměstnance
 interface PayrollDetail {
@@ -10,9 +10,7 @@ interface PayrollDetail {
   gross_wage: number;
   net_wage: number;
   status: string;
-  employees: { // Jméno zaměstnance z propojené tabulky
-    full_name: string;
-  } | null;
+  employee_name?: string;
 }
 
 export function PayrollDetailPage() {
@@ -23,41 +21,37 @@ export function PayrollDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchPayrollDetail = async () => {
+    let mounted = true;
+    const fetchPayroll = async () => {
       if (!id) return;
       try {
         setLoading(true);
-        const { data, error } = await supabase
-          .from('payrolls')
-          .select(`
-            *,
-            employees ( full_name )
-          `)
-          .eq('id', id)
-          .single();
-
-        if (error) throw error;
-        setPayroll(data as PayrollDetail);
-      } catch (error: any) {
-        setError(error.message);
+        const p = await apiService.getPayrollById(id);
+        if (!mounted) return;
+        setPayroll(p as PayrollDetail);
+      } catch (err: any) {
+        setError(err.message || String(err));
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     };
-    fetchPayrollDetail();
+    fetchPayroll();
+    return () => { mounted = false };
   }, [id]);
 
   const handleDelete = async () => {
     if (!payroll) return;
-    const isConfirmed = window.confirm(`Opravdu chcete smazat mzdu pro ${payroll.employees?.full_name}?`);
-    if (isConfirmed) {
-      setLoading(true);
-      try {
-        const { error } = await supabase.from('payrolls').delete().eq('id', payroll.id);
-        if (error) throw error;
-        alert('Mzda byla smazána.');
-        navigate('/payrolls');
-      } catch (error: any) { setError(error.message); } finally { setLoading(false); }
+    const confirmed = window.confirm(`Opravdu chcete smazat mzdu pro ${payroll.employee_name || 'zaměstnance'}?`);
+    if (!confirmed) return;
+    setLoading(true);
+    try {
+      await apiService.deletePayroll(payroll.id);
+      alert('Mzda byla smazána.');
+      navigate('/payrolls');
+    } catch (err: any) {
+      setError(err.message || String(err));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -68,14 +62,16 @@ export function PayrollDetailPage() {
   return (
     <div>
       <h1>Detail mzdy</h1>
-      <p>Zaměstnanec: {payroll.employees?.full_name || 'Neznámý'}</p>
-      <p>Období: {payroll.month}/{payroll.year}</p>
-      <p>Hrubá mzda: {payroll.gross_wage} Kč</p>
-      <p>Čistá mzda: {payroll.net_wage} Kč</p>
-      <p>Status: {payroll.status}</p>
+      <div>
+        <p>Zaměstnanec: {payroll.employee_name || 'Neznámý'}</p>
+        <p>Období: {payroll.month}/{payroll.year}</p>
+        <p>Hrubá mzda: {Number(payroll.gross_wage).toLocaleString('cs-CZ')} Kč</p>
+        <p>Čistá mzda: {Number(payroll.net_wage).toLocaleString('cs-CZ')} Kč</p>
+        <p>Status: {payroll.status}</p>
+      </div>
       <br />
       <Link to={`/payrolls/${payroll.id}/edit`}>Upravit</Link>
-      <button onClick={handleDelete} disabled={loading}>
+      <button onClick={handleDelete} disabled={loading} className="ml-4">
         {loading ? 'Mazání...' : 'Smazat'}
       </button>
       <br />

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { pdfTemplatesService, base64ToUint8Array } from '@/services/pdfTemplates';
@@ -6,12 +6,20 @@ import { useToast } from '@/components/ui/toast';
 
 export default function PdfGeneratorPage() {
   const { warning } = useToast();
-  const templates = useMemo(() => pdfTemplatesService.getAll(), []);
+  const [templates, setTemplates] = useState<any[]>([]);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const all = await pdfTemplatesService.getAll();
+      if (mounted) setTemplates(all);
+    })();
+    return () => { mounted = false };
+  }, []);
   const [selectedId, setSelectedId] = useState('');
   const [variablesText, setVariablesText] = useState('{"rok":"2025","firma":"SVJ Dřevařská"}');
 
   const generate = async () => {
-    const t = templates.find(x => x.id === selectedId);
+  const t = templates.find(x => x.id === selectedId);
     if (!t) return warning('Vyberte šablonu');
     let vars: Record<string,string> = {};
     try { vars = JSON.parse(variablesText); } catch { return warning('Neplatný JSON s proměnnými'); }
@@ -19,11 +27,12 @@ export default function PdfGeneratorPage() {
     // Základní substituce: mapping[field] -> pokud vypadá jako {{key}}, použij hodnotu z vars, jinak ber jako konstantu
     const filled: Record<string,string> = {};
     Object.entries(t.mapping).forEach(([field, template]) => {
-      const m = template.match(/^\s*\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}\s*$/);
+      const tpl = typeof template === 'string' ? template : String(template ?? '');
+      const m = tpl.match(/^\s*\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}\s*$/);
       if (m) {
         filled[field] = vars[m[1]] ?? '';
       } else {
-        filled[field] = template;
+        filled[field] = tpl;
       }
     });
 

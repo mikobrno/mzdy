@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { supabase } from '@/supabaseClient';
+import { apiService } from '@/services/api';
 
 // Typová definice zůstává stejná
 interface Employee {
@@ -30,13 +30,8 @@ export function EmployeeDetailPage() {
       }
       try {
         setLoading(true);
-        const { data, error } = await supabase
-          .from('employees')
-          .select('*')
-          .eq('id', id)
-          .single();
-        if (error) throw error;
-        setEmployee(data);
+        const data = await apiService.getEmployee(id as string);
+        setEmployee(data as any);
       } catch (error: any) {
         setError(error.message);
       } finally {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { supabase } from '@/supabaseClient';
+import { apiService } from '@/services/api';
 
 interface Svj { id: string; name: string; }
 interface HealthInsuranceCompany { id: string; name: string; code: string; }
@@ -23,18 +23,15 @@ export function EmployeeEditPage() {
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
-      setLoading(true);
-      const [svjRes, companiesRes, employeeRes] = await Promise.all([
-        supabase.from('svj').select('id, name'),
-        supabase.from('health_insurance_companies').select('id, name, code'),
-        supabase.from('employees').select('*').eq('id', id).single()
-      ]);
-      if (svjRes.error || companiesRes.error || employeeRes.error) {
-        setError(svjRes.error?.message || companiesRes.error?.message || employeeRes.error?.message || "Chyba při načítání dat.");
-      } else {
-        setSvjList(svjRes.data);
-        setCompanies(companiesRes.data);
-        const employeeData = employeeRes.data;
+      try {
+        setLoading(true);
+        const [svjData, companiesData, employeeData] = await Promise.all([
+          apiService.getSVJList(),
+          apiService.getHealthInsuranceCompanies(),
+          apiService.getEmployee(id as string),
+        ]);
+        setSvjList(svjData || []);
+        setCompanies(companiesData || []);
         if (employeeData) {
           setSvjId(employeeData.svj_id);
           setFullName(employeeData.full_name);
@@ -43,8 +40,11 @@ export function EmployeeEditPage() {
           setSalaryAmount(String(employeeData.salary_amount));
           setCompanyId(employeeData.health_insurance_company_id);
         }
+      } catch (err: any) {
+        setError(err.message || 'Chyba při načítání dat.');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     fetchData();
   }, [id]);
@@ -54,17 +54,14 @@ export function EmployeeEditPage() {
     setLoading(true);
     setError(null);
     try {
-      const { error } = await supabase.from('employees')
-        .update({
-          svj_id: svjId,
-          full_name: fullName,
-          email: email,
-          employment_type: employmentType,
-          salary_amount: parseFloat(salaryAmount),
-          health_insurance_company_id: companyId || null,
-        })
-        .eq('id', id);
-      if (error) throw error;
+      await apiService.updateEmployee(id as string, {
+        svj_id: svjId,
+        full_name: fullName,
+        email: email,
+        employment_type: employmentType,
+        salary_amount: parseFloat(salaryAmount),
+        health_insurance_company_id: companyId || null,
+      });
       alert('Změny u zaměstnance byly úspěšně uloženy!');
       navigate(`/employees/${id}`);
     } catch (error: any) {

@@ -1,0 +1,11 @@
+{
+  "name": "mzdy-integration-tests",
+  "type": "module",
+  "scripts": {
+    "test:integration": "node test-db-fe-integration.js",
+    "test:supabase": "node check-supabase-status.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  }
+}

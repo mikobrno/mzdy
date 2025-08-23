@@ -1,44 +1,69 @@
 import React, { useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Plus, Edit2, Trash2, Calendar, Settings } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
-
-// Mock data pro dynamické proměnné
-const mockVariables = [
-  {
-    id: '1',
-    name: 'obdobi_vyuctovani',
-    description: 'rok vyúčtování',
-    value: '01.01.2025 - 31.12.2025',
-    createdAt: '2025-07-29',
-    updatedAt: '2025-08-06'
-  },
-  {
-    id: '2', 
-    name: 'rok_zuctovani',
-    description: 'rok vyúčtování',
-    value: '2025',
-    createdAt: '2025-07-29',
-    updatedAt: '2025-07-29'
-  }
-];
+import { apiService } from '@/services/api';
 
 export default function DynamicVariables() {
   const { success, warning } = useToast();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
-  const [variables, setVariables] = useState(() => mockVariables);
   const [modalMode, setModalMode] = useState<null | 'new' | 'edit'>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formName, setFormName] = useState('');
   const [formDesc, setFormDesc] = useState('');
   const [formValue, setFormValue] = useState('');
 
+  // Fetch variables from Supabase
+  const { data: variables = [], isLoading } = useQuery({
+    queryKey: ['dynamic-variables'],
+    queryFn: apiService.getDynamicVariables
+  });
+
+  // Create variable mutation
+  const createVariableMutation = useMutation({
+    mutationFn: (data: any) => apiService.createDynamicVariable(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dynamic-variables'] });
+      success('Proměnná byla vytvořena');
+      closeModal();
+    }
+  });
+
+  // Update variable mutation
+  const updateVariableMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => apiService.updateDynamicVariable(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dynamic-variables'] });
+      success('Proměnná byla aktualizována');
+      closeModal();
+    }
+  });
+
+  // Delete variable mutation
+  const deleteVariableMutation = useMutation({
+    mutationFn: (id: string) => apiService.deleteDynamicVariable(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dynamic-variables'] });
+      success('Proměnná byla smazána');
+    }
+  });
+
   const filteredVariables = useMemo(() => variables.filter(variable =>
     variable.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     variable.description.toLowerCase().includes(searchTerm.toLowerCase())
   ), [variables, searchTerm]);
+
+  const closeModal = () => {
+    setModalMode(null);
+    setEditingId(null);
+    setFormName('');
+    setFormDesc('');
+    setFormValue('');
+  };
 
   const openNew = () => {
     setModalMode('new');
@@ -54,7 +79,7 @@ export default function DynamicVariables() {
     setModalMode('edit');
     setEditingId(id);
     setFormName(v.name);
-    setFormDesc(v.description);
+    setFormDesc(v.description || '');
     setFormValue(v.value);
   };
 
@@ -62,29 +87,30 @@ export default function DynamicVariables() {
     const v = variables.find(x => x.id === id);
     if (!v) return;
     if (!window.confirm(`Smazat proměnnou "${v.name}"?`)) return warning('Akce zrušena');
-    setVariables(prev => prev.filter(x => x.id !== id));
-    success('Proměnná smazána');
+    deleteVariableMutation.mutate(id);
   };
 
   const saveForm = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim()) return warning('Zadejte název');
+    
     if (modalMode === 'new') {
-      const created = {
-        id: Math.random().toString(36).slice(2),
+      createVariableMutation.mutate({
         name: formName.trim(),
         description: formDesc.trim(),
-        value: formValue,
-        createdAt: new Date().toISOString().slice(0,10),
-        updatedAt: new Date().toISOString().slice(0,10)
-      };
-      setVariables(prev => [created, ...prev]);
-      success('Proměnná vytvořena');
+        value: formValue
+      });
     } else if (modalMode === 'edit' && editingId) {
-      setVariables(prev => prev.map(v => v.id === editingId ? { ...v, name: formName.trim(), description: formDesc.trim(), value: formValue, updatedAt: new Date().toISOString().slice(0,10) } : v));
-      success('Proměnná upravena');
+      updateVariableMutation.mutate({
+        id: editingId,
+        data: {
+          name: formName.trim(),
+          description: formDesc.trim(),
+          value: formValue,
+          updated_at: new Date().toISOString()
+        }
+      });
     }
-    setModalMode(null);
   };
 
   return (
@@ -149,11 +175,11 @@ export default function DynamicVariables() {
                 <div className="flex items-center gap-4 text-sm text-gray-600">
                   <div className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
-                    <span>Vytvořeno: {variable.createdAt}</span>
+                    <span>Vytvořeno: {new Date(variable.created_at).toLocaleDateString('cs-CZ')}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
-                    <span>Upraveno: {variable.updatedAt}</span>
+                    <span>Upraveno: {new Date(variable.updated_at).toLocaleDateString('cs-CZ')}</span>
                   </div>
                 </div>
               </div>

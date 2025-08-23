@@ -1,14 +1,19 @@
 import React, { useEffect, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { SVJ } from "../types/index";
+import { apiService } from '@/services/api';
+import { useToast } from '@/components/ui/toast';
 
 interface HealthInsuranceCompany {
-  id: number;
+  id: string;
   name: string;
   code: string;
-  xmlExportType: string;
+  // support both snake_case from API and camelCase used in UI code
+  xml_export_format?: string;
+  xmlExportType?: string;
   pdfTemplateId?: number;
 }
 
@@ -18,7 +23,6 @@ interface ExportResult {
   totalBase: number;
   totalInsurance: number;
   xmlFile?: string;
-  pdfTemplateId?: number;
   pdfFile?: string;
 }
 
@@ -30,56 +34,90 @@ const exportTypes = [
 ];
 
 export default function HealthInsuranceAdmin() {
-  const [companies, setCompanies] = useState<HealthInsuranceCompany[]>([]);
+  const { success, error } = useToast();
+  const queryClient = useQueryClient();
+  
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<Partial<HealthInsuranceCompany>>({});
   const [exportResults, setExportResults] = useState<ExportResult[]>([]);
   const [period, setPeriod] = useState("");
   const [svjId, setSvjId] = useState<string>("");
-  const [svjList, setSvjList] = useState<SVJ[]>([]);
 
-  useEffect(() => {
-    fetch("/api/health-insurance/companies")
-      .then((r) => r.json())
-      .then(setCompanies);
-    fetch("/api/svj")
-      .then((r) => r.json())
-      .then(setSvjList);
-  }, []);
+  // Fetch data from Supabase
+  const { data: companies = [] } = useQuery({
+    queryKey: ['health-insurance-companies'],
+    queryFn: apiService.getHealthInsuranceCompanies
+  });
+
+  const { data: svjList = [] } = useQuery({
+    queryKey: ['svj-list'],
+    queryFn: apiService.getSVJList
+  });
+
+  // Mutations
+  const createCompanyMutation = useMutation({
+    mutationFn: async (data: Partial<HealthInsuranceCompany>) => {
+      // Pro nyní používáme mock endpoint, později nahradíme skutečným API
+      const response = await fetch("/api/health-insurance/companies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['health-insurance-companies'] });
+      success('Pojišťovna byla vytvořena');
+      setShowForm(false);
+      setForm({});
+    }
+  });
+
+  const updateCompanyMutation = useMutation({
+    mutationFn: async (data: HealthInsuranceCompany) => {
+      const response = await fetch(`/api/health-insurance/companies/${data.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['health-insurance-companies'] });
+      success('Pojišťovna byla aktualizována');
+      setShowForm(false);
+      setForm({});
+    }
+  });
+
+  const deleteCompanyMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await fetch(`/api/health-insurance/companies/${id}`, { method: "DELETE" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['health-insurance-companies'] });
+      success('Pojišťovna byla smazána');
+    }
+  });
 
   const handleEdit = (c: HealthInsuranceCompany) => {
     setForm(c);
     setShowForm(true);
   };
 
-  const handleDelete = (id: number) => {
-    fetch(`/api/health-insurance/companies/${id}`, { method: "DELETE" })
-      .then(() => setCompanies((prev) => prev.filter((c) => c.id !== id)));
+  const handleDelete = (id: string) => {
+    if (window.confirm('Opravdu chcete smazat tuto pojišťovnu?')) {
+      deleteCompanyMutation.mutate(id);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const method = form.id ? "PUT" : "POST";
-    const url = form.id
-      ? `/api/health-insurance/companies/${form.id}`
-      : "/api/health-insurance/companies";
-    fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    })
-      .then((r) => r.json())
-      .then((company) => {
-        setShowForm(false);
-        setForm({});
-        setCompanies((prev) => {
-          if (form.id) {
-            return prev.map((c) => (c.id === company.id ? company : c));
-          } else {
-            return [...prev, company];
-          }
-        });
-      });
+    if (form.id) {
+      updateCompanyMutation.mutate(form as HealthInsuranceCompany);
+    } else {
+      createCompanyMutation.mutate(form);
+    }
   };
 
   const handleExport = () => {
@@ -119,8 +157,8 @@ export default function HealthInsuranceAdmin() {
               title="Vyberte firmu"
             >
               <option value="">Vyberte firmu</option>
-              {companies.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+              {svjList.map((s: SVJ) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>
             <input
@@ -236,11 +274,11 @@ export default function HealthInsuranceAdmin() {
                 <tr key={i}>
                   <td>{r.insuranceName}</td>
                   <td><Badge>{r.insuranceCode}</Badge></td>
-                  <td>{r.totalBase.toLocaleString()} Kč</td>
-                  <td>{r.totalInsurance.toLocaleString()} Kč</td>
+                    <td>{r.totalBase.toLocaleString()} Kč</td>
+                    <td>{r.totalInsurance.toLocaleString()} Kč</td>
                   <td>
                     <Button size="sm" variant="outline" onClick={() => downloadFile(r.xmlFile, `export_${r.insuranceCode}.xml`)}>Stáhnout XML</Button>
-                    {r.pdfTemplateId && (
+                    {r.pdfFile && (
                       <Button size="sm" variant="outline" className="ml-2" onClick={() => downloadFile(r.pdfFile, `export_${r.insuranceCode}.pdf`)}>Stáhnout PDF</Button>
                     )}
                   </td>

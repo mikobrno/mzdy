@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +8,15 @@ import { useToast } from '@/components/ui/toast';
 
 export default function PdfTemplatesPage() {
   const { success, warning } = useToast();
-  const [items, setItems] = useState<PdfTemplate[]>(() => pdfTemplatesService.getAll());
+  const [items, setItems] = useState<PdfTemplate[]>([]);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const all = await pdfTemplatesService.getAll();
+      if (mounted) setItems(all);
+    })();
+    return () => { mounted = false };
+  }, []);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<PdfTemplate | null>(null);
   const [editMappingFor, setEditMappingFor] = useState<PdfTemplate | null>(null);
@@ -31,7 +39,7 @@ export default function PdfTemplatesPage() {
     const ab = await f.arrayBuffer();
     const base64 = arrayBufferToBase64(ab);
     // Placeholder: bez skutečné extrakce polí; pole vyplní admin
-    const created = pdfTemplatesService.create({
+    const created = await pdfTemplatesService.create({
       name: f.name.replace(/\.pdf$/i, ''),
       fileName: f.name,
       fileBase64: base64,
@@ -43,17 +51,17 @@ export default function PdfTemplatesPage() {
     e.target.value = '';
   };
 
-  const remove = (id: string) => {
+  const remove = async (id: string) => {
     const t = items.find(x => x.id === id);
     if (!t) return;
     if (!window.confirm(`Smazat šablonu \"${t.name}\"?`)) return warning('Akce zrušena');
-    pdfTemplatesService.remove(id);
+    await pdfTemplatesService.remove(id);
     setItems(prev => prev.filter(x => x.id !== id));
     success('Šablona smazána');
   };
 
-  const saveMapping = (id: string, mapping: Record<string,string>) => {
-    const updated = pdfTemplatesService.update(id, { mapping });
+  const saveMapping = async (id: string, mapping: Record<string,string>) => {
+    const updated = await pdfTemplatesService.update(id, { mapping });
     if (updated) setItems(prev => prev.map(x => x.id === id ? updated : x));
     setEditMappingFor(null);
     success('Mapování uloženo');
@@ -142,7 +150,12 @@ export default function PdfTemplatesPage() {
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setSelected(null)}>Zrušit</Button>
-                  <Button onClick={() => { const upd = pdfTemplatesService.update(selected.id, { name: selected.name }); if (upd) setItems(prev => prev.map(x => x.id === upd.id ? upd : x)); setSelected(null); success('Uloženo'); }}>Uložit</Button>
+                  <Button onClick={async () => {
+                    const upd = await pdfTemplatesService.update(selected.id, { name: selected.name });
+                    if (upd) setItems(prev => prev.map(x => x.id === upd.id ? upd : x));
+                    setSelected(null);
+                    success('Uloženo');
+                  }}>Uložit</Button>
                 </div>
               </div>
             </CardContent>
@@ -188,7 +201,7 @@ export default function PdfTemplatesPage() {
                       fileBase64 = arrayBufferToBase64(ab);
                       fileName = newFile.name;
                     }
-                    const created = pdfTemplatesService.create({
+                    const created = await pdfTemplatesService.create({
                       name: newName.trim(),
                       fileName,
                       fileBase64,

@@ -8,10 +8,14 @@
     "build": "vite build",
     "build-with-types": "tsc && vite build",
     "preview": "vite preview",
+  "smoke-tests": "node supabase/tests/run-all-smoke-tests.mjs",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test:integration": "node test-db-fe-integration.js",
+    "test:db-status": "node check-supabase-status.js"
   },
   "dependencies": {
+    "@apollo/client": "^4.0.0",
     "@nhost/nhost-js": "^3.3.0",
     "@radix-ui/react-checkbox": "^1.0.4",
     "@radix-ui/react-dialog": "^1.0.5",
@@ -25,8 +29,10 @@
     "axios": "^1.11.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
+    "graphql": "^16.11.0",
     "graphql-request": "^7.2.0",
     "lucide-react": "^0.294.0",
+    "pg": "^8.16.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.0",

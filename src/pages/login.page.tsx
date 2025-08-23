@@ -19,8 +19,8 @@ export function LoginPage() {
   const { login } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
+    email: 'admin@onlinesprava.cz',
+    password: '123456',
     rememberMe: false
   })
   const [errors, setErrors] = useState<{[key: string]: string}>({})
