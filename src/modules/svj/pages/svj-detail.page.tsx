@@ -117,7 +117,11 @@ export function SvjDetailPage() {
   const currentYear = new Date().getFullYear()
   const currentMonth = new Date().getMonth() + 1
 
-  const totalPaidThisYear = payrolls?.reduce((sum: number, p: any) => sum + (p.net_wage ?? p.net_salary ?? p.netSalary ?? 0), 0) || 0
+  const totalPaidThisYear = payrolls?.reduce((sum: number, p: any) => {
+    const netValue = p.net_wage ?? p.net_salary ?? p.netSalary ?? 0;
+    return sum + (typeof netValue === 'number' ? netValue : 0);
+  }, 0) || 0
+
   const pendingPayrolls = payrolls?.filter((p: any) => ['draft', 'prepared', 'pending'].includes(p.status)).length || 0
   const completedPayrolls = payrolls?.filter((p: any) => ['paid','completed','approved'].includes(p.status)).length || 0
 
@@ -131,7 +135,10 @@ export function SvjDetailPage() {
         (monthPayrolls.every((p: any) => ['paid','completed'].includes(p.status)) ? 'completed' : 
          monthPayrolls.some((p: any) => ['approved'].includes(p.status)) ? 'approved' : 'draft') : 'none',
       count: monthPayrolls.length,
-      total: monthPayrolls.reduce((sum: number, p: any) => sum + (p.net_wage ?? p.net_salary ?? p.netSalary ?? 0), 0)
+      total: monthPayrolls.reduce((sum: number, p: any) => {
+        const netValue = p.net_wage ?? p.net_salary ?? p.netSalary ?? 0;
+        return sum + (typeof netValue === 'number' ? netValue : 0);
+      }, 0)
     }
   })
 

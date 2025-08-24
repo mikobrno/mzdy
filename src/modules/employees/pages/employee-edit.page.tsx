@@ -72,51 +72,53 @@ export function EmployeeEditPage() {
   };
 
   return (
-    <div>
-      <h1>Upravit zaměstnance</h1>
-      <Link to={`/employees/${id}`}>Zpět na detail</Link>
-      
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="svj">Přiřadit k SVJ</label>
-          <select id="svj" value={svjId} onChange={(e) => setSvjId(e.target.value)} required>
-            <option value="" disabled>Vyberte SVJ</option>
-            {svjList.map(svj => <option key={svj.id} value={svj.id}>{svj.name}</option>)}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="fullName">Celé jméno</label>
-          <input type="text" id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-        </div>
-        <div>
-          <label htmlFor="email">Email</label>
-          <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </div>
-        <div>
-          <label htmlFor="employmentType">Typ úvazku</label>
-          <select id="employmentType" value={employmentType} onChange={(e) => setEmploymentType(e.target.value)} required>
-            <option value="dpp">DPP</option>
-            <option value="vybor">Člen výboru</option>
-          </select>
-        </div>
-        <div>
-          <label htmlFor="salaryAmount">Částka na smlouvě (Kč)</label>
-          <input type="number" id="salaryAmount" value={salaryAmount} onChange={(e) => setSalaryAmount(e.target.value)} required />
-        </div>
-        <div>
-          <label htmlFor="company">Zdravotní pojišťovna</label>
-          <select id="company" value={companyId || ''} onChange={(e) => setCompanyId(e.target.value || null)}>
-            <option value="">Nepřiřazeno</option>
-            {companies.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
-          </select>
-        </div>
-        
-        {error && <p>Chyba: {error}</p>}
-        
-        <button type="submit" disabled={loading}>
-          {loading ? 'Ukládání...' : 'Uložit změny'}
-        </button>
-      </form>
+    <div className="p-6 space-y-6 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 min-h-screen">
+      <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Upravit zaměstnance</h1>
+        <Link to={`/employees/${id}`} className="text-blue-500 hover:underline">Zpět na detail</Link>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="svj" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Přiřadit k SVJ</label>
+            <select id="svj" value={svjId} onChange={(e) => setSvjId(e.target.value)} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600">
+              <option value="" disabled>Vyberte SVJ</option>
+              {svjList.map(svj => <option key={svj.id} value={svj.id}>{svj.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Celé jméno</label>
+            <input type="text" id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600" />
+          </div>
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+            <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600" />
+          </div>
+          <div>
+            <label htmlFor="employmentType" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Typ úvazku</label>
+            <select id="employmentType" value={employmentType} onChange={(e) => setEmploymentType(e.target.value)} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600">
+              <option value="dpp">DPP</option>
+              <option value="vybor">Člen výboru</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="salaryAmount" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Částka na smlouvě (Kč)</label>
+            <input type="number" id="salaryAmount" value={salaryAmount} onChange={(e) => setSalaryAmount(e.target.value)} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600" />
+          </div>
+          <div>
+            <label htmlFor="company" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Zdravotní pojišťovna</label>
+            <select id="company" value={companyId || ''} onChange={(e) => setCompanyId(e.target.value || null)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600">
+              <option value="">Nepřiřazeno</option>
+              {companies.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
+            </select>
+          </div>
+
+          {error && <p className="text-red-500">Chyba: {error}</p>}
+
+          <button type="submit" disabled={loading} className="w-full py-2 px-4 bg-blue-500 text-white font-semibold rounded-md shadow-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+            {loading ? 'Ukládání...' : 'Uložit změny'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

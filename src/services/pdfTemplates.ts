@@ -37,12 +37,14 @@ export const pdfTemplatesService = {
     return (rows || []).map((r: any) => ({
       id: r.id,
       name: r.name,
-      fileName: r.file_name || r.fileName || '',
-      fileBase64: r.file_base64 || r.fileBase64 || '',
-      fields: r.fields || [],
-      mapping: r.mapping || {},
-      createdAt: r.created_at || r.createdAt || '' ,
-      updatedAt: r.updated_at || r.updatedAt || ''
+  // db column is file_path; UI expects fileName for display — prefer file_name then file_path
+  fileName: r.file_name || r.fileName || r.file_path || '',
+  fileBase64: r.file_base64 || r.fileBase64 || '',
+  // db column is field_mappings (jsonb)
+  fields: r.fields || [],
+  mapping: r.field_mappings || r.mapping || {},
+  createdAt: r.created_at || r.createdAt || '' ,
+  updatedAt: r.updated_at || r.updatedAt || ''
     }))
   },
   async getById(id: string): Promise<PdfTemplate | undefined> {
@@ -61,12 +63,12 @@ export const pdfTemplatesService = {
     return {
       id: r.id,
       name: r.name,
-      fileName: r.file_name,
-      fileBase64: r.file_base64,
-      fields: r.fields || [],
-      mapping: r.mapping || {},
-      createdAt: r.created_at,
-      updatedAt: r.updated_at,
+  fileName: r.file_name || r.file_path || '',
+  fileBase64: r.file_base64,
+  fields: r.fields || [],
+  mapping: r.field_mappings || r.mapping || {},
+  createdAt: r.created_at,
+  updatedAt: r.updated_at,
     }
   },
   async update(id: string, patch: Partial<PdfTemplate>): Promise<PdfTemplate | undefined> {
@@ -81,12 +83,12 @@ export const pdfTemplatesService = {
     return {
       id: r.id,
       name: r.name,
-      fileName: r.file_name,
-      fileBase64: r.file_base64,
-      fields: r.fields || [],
-      mapping: r.mapping || {},
-      createdAt: r.created_at,
-      updatedAt: r.updated_at,
+  fileName: r.file_name || r.file_path || '',
+  fileBase64: r.file_base64,
+  fields: r.fields || [],
+  mapping: r.field_mappings || r.mapping || {},
+  createdAt: r.created_at,
+  updatedAt: r.updated_at,
     }
   },
   async remove(id: string) {

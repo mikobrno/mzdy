@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useAuth } from '@/hooks/use-auth';
 
 interface RegisterData {
   firstName: string
@@ -29,6 +30,7 @@ interface RegisterData {
 
 export default function Register() {
   const navigate = useNavigate()
+  const { signUpWithEmail } = useAuth();
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [formData, setFormData] = useState<RegisterData>({
@@ -117,6 +119,17 @@ export default function Register() {
     
     registerMutation.mutate(formData)
   }
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const data = await signUpWithEmail(formData.email, formData.password);
+      alert('Registrace úspěšná! Zkontrolujte svůj e-mail pro potvrzení.');
+      navigate('/login');
+    } catch (error: any) {
+      setErrors({ general: error.message || 'Registrace se nezdařila. Zkuste to prosím znovu.' });
+    }
+  };
 
   const positionOptions = [
     { value: 'admin', label: 'Administrátor', description: 'Plný přístup ke všem funkcím' },

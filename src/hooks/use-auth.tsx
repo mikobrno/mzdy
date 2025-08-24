@@ -9,6 +9,8 @@ interface AuthContextType {
   isLoading: boolean
   hasPermission: (permission: string) => boolean
   isInRole: (role: string | string[]) => boolean
+  signUpWithEmail: (email: string, password: string) => Promise<any>
+  sendPasswordResetEmail: (email: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -149,7 +151,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function signUpWithEmail(email: string, password: string) {
+    try {
+      const { data, error } = await supabase.auth.signUp({ email, password })
+      if (error) {
+        console.error('Chyba při registraci:', error.message)
+        throw new Error('Registrace selhala. Zkontrolujte zadané údaje.')
+      }
+      return data
+    } catch (err) {
+      throw err
+    }
+  }
 
+  async function sendPasswordResetEmail(email: string) {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email)
+      if (error) {
+        console.error('Chyba při odesílání resetu hesla:', error.message)
+        throw new Error('Odeslání resetu hesla selhalo. Zkontrolujte e-mailovou adresu.')
+      }
+    } catch (err) {
+      throw err
+    }
+  }
 
   return (
     <AuthContext.Provider value={{
@@ -158,7 +183,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       isLoading,
       hasPermission,
-      isInRole
+      isInRole,
+      signUpWithEmail,
+      sendPasswordResetEmail
     }}>
       {children}
     </AuthContext.Provider>

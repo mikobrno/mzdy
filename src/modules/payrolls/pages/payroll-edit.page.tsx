@@ -43,6 +43,7 @@ export function PayrollEditPage() {
         .update({
           gross_wage: parseFloat(grossWage),
           net_wage: netWage,
+          status: 'draft', // Přidání validní hodnoty pro status
         })
         .eq('id', id);
       if (error) throw error;

@@ -308,13 +308,36 @@ class SupabaseApiService {
   }
 
   async createPdfTemplate(payload: any): Promise<any> {
-    const { data, error } = await supabase.from('pdf_templates').insert([payload]).select().single()
+    // Map incoming payload fields from frontend to actual DB column names
+    const toInsert: any = {
+      name: payload.name,
+      // DB stores the file location/path. If frontend provided fileBase64 but no storage,
+      // store original filename in file_path as a fallback (empty string not allowed by schema)
+      file_path: payload.file_path ?? payload.fileName ?? payload.file_name ?? '',
+      // field_mappings is jsonb NOT NULL in the schema
+      field_mappings: payload.field_mappings ?? payload.mapping ?? payload.field_mappings ?? {},
+    }
+    // If frontend provided file_base64 or fileBase64, store it as well (some deployments may accept it)
+    if (payload.file_base64 !== undefined) toInsert.file_base64 = payload.file_base64
+    if (payload.fileBase64 !== undefined) toInsert.file_base64 = payload.fileBase64
+
+    const { data, error } = await supabase.from('pdf_templates').insert([toInsert]).select().single()
     if (error) throw error
     return data
   }
 
   async updatePdfTemplate(id: string, patch: any): Promise<any> {
-    const { data, error } = await supabase.from('pdf_templates').update(patch).eq('id', id).select().single()
+  // Map patch fields to DB columns
+  const toUpdate: any = {}
+  if (patch.name !== undefined) toUpdate.name = patch.name
+  if (patch.file_name !== undefined) toUpdate.file_path = patch.file_name
+  if ((patch as any).fileName !== undefined) toUpdate.file_path = (patch as any).fileName
+  if ((patch as any).file_base64 !== undefined) toUpdate.file_base64 = (patch as any).file_base64
+  if ((patch as any).fileBase64 !== undefined) toUpdate.file_base64 = (patch as any).fileBase64
+  if (patch.mapping !== undefined) toUpdate.field_mappings = patch.mapping
+  if (patch.field_mappings !== undefined) toUpdate.field_mappings = patch.field_mappings
+
+  const { data, error } = await supabase.from('pdf_templates').update(toUpdate).eq('id', id).select().single()
     if (error) throw error
     return data
   }
