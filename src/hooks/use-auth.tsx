@@ -15,57 +15,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// Mock uživatelé pro testování
-const mockUsers: { [email: string]: User } = {
-  'admin@example.com': {
-    id: '1',
-    email: 'admin@example.com',
-    firstName: 'Jan',
-    lastName: 'Novák',
-    role: 'super_admin' as any,
-    permissions: ['read_all', 'write_all', 'admin'],
-    isActive: true,
-    createdAt: new Date()
-  },
-  'ucetni@example.com': {
-    id: '2',
-    email: 'ucetni@example.com',
-    firstName: 'Marie',
-    lastName: 'Svobodová',
-    role: 'payroll_accountant' as any,
-    permissions: ['payroll_read', 'payroll_write', 'employees_read'],
-    isActive: true,
-    createdAt: new Date()
-  },
-  'manazer@example.com': {
-    id: '3',
-    email: 'manazer@example.com',
-    firstName: 'Petr',
-    lastName: 'Dvořák',
-    role: 'committee_member' as any,
-    permissions: ['employees_read', 'svj_read'],
-    isActive: true,
-    createdAt: new Date()
-  },
-  'admin@onlinesprava.cz': {
-    id: '123e4567-e89b-12d3-a456-426614174000', // Skutečné ID v databázi
-    email: 'admin@onlinesprava.cz',
-    firstName: 'Admin',
-    lastName: 'Správa',
-    role: 'super_admin' as any,
-    permissions: ['read_all', 'write_all', 'admin'],
-    isActive: true,
-    createdAt: new Date()
-  }
-}
-
-// Mock hesla
-const mockPasswords: { [email: string]: string } = {
-  'admin@example.com': 'admin123',
-  'ucetni@example.com': 'ucetni123',
-  'manazer@example.com': 'manazer123',
-  'admin@onlinesprava.cz': '123456'
-}
+// (Původní mock uživatelé byly odstraněny — nyní čistě Supabase Auth)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -74,29 +24,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true
 
-    // Pro vývoj používáme pouze mock přihlášení, přeskačíváme Supabase auth
-    console.log('🔒 Používám mock přihlášení pro vývoj')
-    if (mounted) {
-      setUser(mockUsers['admin@onlinesprava.cz'])
-      setIsLoading(false)
-    }
+    // Inicializuj stav z aktuální session Supabase a přihlášení posluchače změn
+    ;(async () => {
+      try {
+        const { data } = await supabase.auth.getSession()
+        if (mounted && data?.session?.user) {
+          setUser(mapSupabaseUser(data.session.user))
+        }
+      } catch (e) {
+        // Pokud Supabase není dostupné, ponecháme uživatele jako null (fallback je stále možný)
+        console.warn('Supabase session check failed, falling back to no-session', e)
+      } finally {
+        if (mounted) setIsLoading(false)
+      }
+    })()
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return
+      if (session?.user) {
+        setUser(mapSupabaseUser(session.user))
+      } else {
+        setUser(null)
+      }
+    })
 
     return () => {
       mounted = false
+      try { listener?.subscription?.unsubscribe() } catch (e) { /* ignore */ }
     }
   }, [])
 
   const login = async (email: string, password: string) => {
     setIsLoading(true)
     try {
-      // Nejdřív zkusíme mock přihlášení pro známé účty
-      if (mockUsers[email] && mockPasswords[email] === password) {
-        setUser(mockUsers[email])
-        setIsLoading(false)
-        return
-      }
-
-      // Pokud není v mock datech, zkusíme Supabase
+  // Pouze Supabase auth
       const { error, data } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
         console.error('Chyba při přihlášení:', error.message)
@@ -112,15 +73,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const loginAsAdmin = () => {
-    setUser(mockUsers['admin@example.com'])
-  }
-
   const logout = async () => {
-    // Přepneme na jiný mock uživatel nebo zůstaneme na stejném
-    console.log('🔓 Odhlášení - zůstávám s mock uživatelem')
-    // Můžeme přepnout na jiný účet nebo zůstat stejný
-    setUser(mockUsers['admin@onlinesprava.cz'])
+    try {
+      await supabase.auth.signOut()
+    } catch (e) {
+      console.warn('Supabase signOut failed, clearing local user anyway', e)
+    }
+    setUser(null)
   }
 
   const hasPermission = (permission: string): boolean => {

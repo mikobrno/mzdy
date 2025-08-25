@@ -47,12 +47,7 @@ export default function Register() {
 
   const registerMutation = useMutation({
     mutationFn: (data: RegisterData) => {
-      // Mock API volání
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve({ success: true, message: 'Registrace úspěšná' })
-        }, 2000)
-      })
+      return signUpWithEmail(data.email, data.password)
     },
     onSuccess: () => {
       navigate('/login?registered=true')
@@ -119,17 +114,6 @@ export default function Register() {
     
     registerMutation.mutate(formData)
   }
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const data = await signUpWithEmail(formData.email, formData.password);
-      alert('Registrace úspěšná! Zkontrolujte svůj e-mail pro potvrzení.');
-      navigate('/login');
-    } catch (error: any) {
-      setErrors({ general: error.message || 'Registrace se nezdařila. Zkuste to prosím znovu.' });
-    }
-  };
 
   const positionOptions = [
     { value: 'admin', label: 'Administrátor', description: 'Plný přístup ke všem funkcím' },
