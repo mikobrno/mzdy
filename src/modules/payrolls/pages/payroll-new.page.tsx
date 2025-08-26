@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiService } from '@/services/api';
+import { toDbStatus, DEFAULT_DB_PAYROLL_STATUS } from '@/lib/payroll-status';
 
 interface Employee {
   id: string;
@@ -41,15 +42,16 @@ export function PayrollNewPage() {
         employee_id: employeeId,
         month,
         year,
-        gross_wage: parseFloat(grossWage),
-        net_wage: netWage,
-        status: 'pending',
+  gross_wage: parseFloat(grossWage),
+  net_wage: netWage,
+  status: toDbStatus(DEFAULT_DB_PAYROLL_STATUS),
       })
       if (!created) throw new Error('Vytvoření mzdy selhalo')
       alert('Mzda byla úspěšně vytvořena!');
       navigate('/payrolls');
-    } catch (error: any) {
-      setError(error.message);
+    } catch (err: unknown) {
+      const message = (err as { message?: string })?.message ?? String(err)
+      setError(message)
     } finally {
       setLoading(false);
     }

@@ -1,10 +1,9 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
   ArrowLeft,
   Calculator, 
-  Users, 
   Download,
   FileText,
   Check,
@@ -12,7 +11,6 @@ import {
   Edit,
   Eye,
   AlertTriangle,
-  CheckCircle,
   Clock,
   Plus,
   Save,
@@ -25,8 +23,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { apiService } from '@/services/api'
 import { useToast } from '@/components/ui/toast'
-import { SalaryRecord, Employee, SVJ } from '@/types'
-import { cn } from '@/lib/utils'
+import { SalaryRecord } from '@/types'
+import { toDbStatus, DEFAULT_DB_PAYROLL_STATUS } from '@/lib/payroll-status'
+// import { cn } from '@/lib/utils' (unused)
 import { templatesService } from '@/services/templates'
 import { employeeMessagingService } from '@/services/employeeMessaging'
 
@@ -37,7 +36,21 @@ type PayrollEmployee = {
   contractType: string
   salary: number
   healthInsurance: string
-  salaryRecord?: Omit<SalaryRecord, 'status'> & { status: string }
+  salaryRecord?: {
+    id?: string
+    employeeId?: string
+    svjId?: string
+    year?: number
+    month?: number
+    grossSalary?: number
+    netSalary?: number
+    healthInsurance?: number
+    socialInsurance?: number
+    tax?: number
+    status?: string
+    createdBy?: string
+    createdAt?: Date
+  }
 }
 
 // No more mock data - will fetch from Supabase
@@ -81,29 +94,33 @@ export default function PayrollMonthly() {
   const payrollData = useMemo(() => {
     if (!employees || !year || !month) return null
     
-    const enrichedEmployees = employees.map((emp: any) => {
-      const salaryRecord = salaryRecords?.find((sr: any) => sr.employee_id === emp.id)
+    const enrichedEmployees = (employees as unknown[]).map((empUnk) => {
+      const emp = empUnk as Record<string, unknown>
+      const salaryRecord = (salaryRecords as unknown[] | undefined)?.find((srUnk) => (srUnk as Record<string, unknown>)['employee_id'] === emp['id']) as Record<string, unknown> | undefined
+      const fullStr = String(emp['full_name'] ?? '')
+      const fname = fullStr.trim() ? fullStr.split(' ')[0] : ''
+      const lname = fullStr.trim() ? fullStr.split(' ').slice(1).join(' ') : ''
       return {
-        id: emp.id,
-        firstName: emp.full_name?.split(' ')[0] || 'N/A',
-        lastName: emp.full_name?.split(' ').slice(1).join(' ') || 'N/A',
-        contractType: emp.employment_type === 'vybor' ? 'committee_member' : 'dpp',
-        salary: emp.salary_amount || 0,
+        id: String(emp['id'] ?? ''),
+        firstName: fname,
+        lastName: lname,
+        contractType: String(emp['employment_type'] ?? 'dpp') === 'vybor' ? 'committee_member' : 'dpp',
+        salary: Number(emp['salary_amount'] ?? 0) || 0,
         healthInsurance: '111', // Default - could be mapped from emp.health_insurance_company_id
         salaryRecord: salaryRecord ? {
           id: salaryRecord.id,
-          employeeId: salaryRecord.employee_id,
+            employeeId: salaryRecord.employee_id,
           svjId: svjId!,
           year: parseInt(year!),
           month: parseInt(month!),
-          grossSalary: salaryRecord.gross_wage || salaryRecord.base_salary || 0,
-          netSalary: salaryRecord.net_wage || 0,
-          healthInsurance: salaryRecord.health_insurance_amount || 0,
-          socialInsurance: salaryRecord.social_insurance_amount || 0,
-          tax: salaryRecord.tax_advance || 0,
-          status: salaryRecord.status || 'draft',
+          grossSalary: (salaryRecord as Record<string, unknown>)['gross_wage'] ?? (salaryRecord as Record<string, unknown>)['base_salary'] ?? 0,
+          netSalary: (salaryRecord as Record<string, unknown>)['net_wage'] ?? 0,
+          healthInsurance: (salaryRecord as Record<string, unknown>)['health_insurance_amount'] ?? 0,
+          socialInsurance: (salaryRecord as Record<string, unknown>)['social_insurance_amount'] ?? 0,
+          tax: (salaryRecord as Record<string, unknown>)['tax_advance'] ?? 0,
+    status: (salaryRecord as Record<string, unknown>)['status'] ?? 'draft',
           createdBy: 'system',
-          createdAt: new Date(salaryRecord.created_at || Date.now())
+          createdAt: new Date(String((salaryRecord as Record<string, unknown>)['created_at'] ?? Date.now()))
         } : undefined
       }
     })
@@ -114,15 +131,18 @@ export default function PayrollMonthly() {
       month: parseInt(month!),
       status: 'ready_for_approval',
       employees: enrichedEmployees
-    }
+    } as unknown as { svjId: string; year: number; month: number; status: string; employees: PayrollEmployee[] }
   }, [employees, salaryRecords, svjId, year, month])
 
   const isLoading = !payrollData
 
   const updateSalaryMutation = useMutation({
-    mutationFn: (data: Partial<SalaryRecord>) => apiService.createSalaryRecord(data as any),
+    mutationFn: (data: Partial<SalaryRecord>) => apiService.createSalaryRecord(data as Partial<SalaryRecord>),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['payroll', svjId, year, month] })
+  // Refresh the salary records query so the UI shows the newly created/updated payroll
+  queryClient.invalidateQueries({ queryKey: ['salary-records', svjId, year, month] })
+  // Also refresh any general payroll list views
+  queryClient.invalidateQueries({ queryKey: ['payroll', svjId, year, month] })
       setEditingEmployee(null)
     }
   })
@@ -149,7 +169,32 @@ export default function PayrollMonthly() {
       healthInsurance: 0,
       socialInsurance: 0,
       tax: 0,
-      status: 'draft',
+  status: 'draft',
+      createdBy: 'current_user'
+    })
+  }
+
+  // Basic payroll calculator (placeholder - adjust rules as needed)
+  const computeFromGross = (gross: number) => {
+    const tax = Math.round(gross * 0.15)
+    const healthInsurance = Math.round(gross * 0.045)
+    const socialInsurance = Math.round(gross * 0.065)
+    const netSalary = Math.max(0, gross - tax - healthInsurance - socialInsurance)
+    return { grossSalary: gross, netSalary, tax, healthInsurance, socialInsurance }
+  }
+
+  const handleRecalculateForEmployee = (employee: PayrollEmployee) => {
+    // open edit mode and prefill computed values from employee.salary (fallback)
+    const baseGross = employee.salaryRecord?.grossSalary ?? employee.salary ?? 0
+    const computed = computeFromGross(baseGross)
+    setEditingEmployee(employee.id)
+    setEditForm((employee.salaryRecord as unknown as Partial<SalaryRecord>) || {
+      employeeId: employee.id,
+      svjId: svjId!,
+      year: parseInt(year!),
+      month: parseInt(month!),
+      ...computed,
+  status: 'draft',
       createdBy: 'current_user'
     })
   }
@@ -159,46 +204,85 @@ export default function PayrollMonthly() {
   const handleSaveEmployee = async () => {
     try {
       // find employee object from current payrollData
-      const emp = payrollData.employees.find((e: any) => e.id === editingEmployee)
+  const emp = payrollData.employees.find((e: unknown) => (e as Record<string, unknown>)['id'] === editingEmployee) as unknown as PayrollEmployee | undefined
 
       // Ensure we have a real UUID employee id for Supabase
-  let employeeId = (editForm as any).employeeId || (editForm as any).employee_id || editingEmployee
-      const isUuid = typeof employeeId === 'string' && /^[0-9a-fA-F-]{36,36}$/.test(employeeId)
+  const employeeIdRaw = (editForm as unknown as Record<string, unknown>)['employeeId'] ?? (editForm as unknown as Record<string, unknown>)['employee_id'] ?? editingEmployee
+  let employeeId = typeof employeeIdRaw === 'string' ? employeeIdRaw : String(employeeIdRaw)
+  const isUuid = typeof employeeId === 'string' && /^[0-9a-fA-F-]{36}$/.test(employeeId)
 
       if (!isUuid) {
         // Create minimal employee in Supabase so FK constraints pass
         const name = emp ? `${emp.firstName} ${emp.lastName}` : `Employee ${employeeId}`
         const created = await apiService.createEmployee({
-          svj_id: svj?.id || svjId,
+          svj_id: (svj as unknown as { id?: string })?.id ?? svjId,
           full_name: name,
-          salary_amount: (editForm as any).grossSalary || 0,
+          salary_amount: (editForm as unknown as Record<string, unknown>)['grossSalary'] ?? 0,
           employment_type: emp?.contractType === 'dpp' ? 'dpp' : 'vybor'
         })
-        employeeId = created.id
+        employeeId = String((created as unknown as Record<string, unknown>)?.id)
       }
-
-      const payload: any = {
+      const payload = {
         employeeId: employeeId,
-        month: editForm.month || parseInt(month!),
-        year: editForm.year || parseInt(year!),
-        // map to accepted status values; keep existing union of statuses
-        status: (editForm as any).status || 'pending',
-        base_salary: (editForm as any).grossSalary ?? 0,
-        bonuses: (editForm as any).bonuses ?? 0,
-        gross_salary: (editForm as any).grossSalary ?? 0,
-        net_salary: (editForm as any).netSalary ?? 0
-      }
+        month: (editForm as unknown as Record<string, unknown>)['month'] ?? parseInt(month!),
+        year: (editForm as unknown as Record<string, unknown>)['year'] ?? parseInt(year!),
+        // ensure DB-valid status
+        status: toDbStatus(((editForm as unknown as Record<string, unknown>)['status']) as string | undefined ?? DEFAULT_DB_PAYROLL_STATUS),
+        base_salary: (editForm as unknown as Record<string, unknown>)['grossSalary'] ?? 0,
+        bonuses: (editForm as unknown as Record<string, unknown>)['bonuses'] ?? 0,
+        gross_salary: (editForm as unknown as Record<string, unknown>)['grossSalary'] ?? 0,
+        net_salary: (editForm as unknown as Record<string, unknown>)['netSalary'] ?? 0
+      } as Partial<SalaryRecord>
 
       // use mutateAsync so we can await and show feedback
-      await updateSalaryMutation.mutateAsync(payload)
+  console.debug('Saving payroll payload', payload)
+  const resp = await updateSalaryMutation.mutateAsync(payload)
+  console.debug('Save response', resp)
 
-      success('Uloženo', 'Mzdový záznam byl uložen do Supabase')
-      queryClient.invalidateQueries({ queryKey: ['payroll', svjId, year, month] })
-      setEditingEmployee(null)
-      setEditForm({})
-    } catch (err: any) {
-      console.error('Chyba při ukládání mzdy', err)
-      toastError('Chyba při ukládání', err?.message || String(err))
+  // 🔧 Hard invalidate/refetch exact page keys so UI updates immediately
+  const recordsKey = ['payroll', 'records', svjId, month]
+  const totalsKey = ['payroll', 'totals', svjId, month]
+
+  // Optional optimistic update: merge saved row into existing cached records if present
+  try {
+    queryClient.setQueryData(recordsKey, (prev: unknown) => {
+      try {
+        const prevArr = (prev as unknown[] ) || []
+        const saved = resp as Record<string, unknown>
+        if (!saved || !saved.id) return prevArr
+        const idx = prevArr.findIndex(r => String((r as unknown as Record<string, unknown>)['id']) === String(saved.id))
+        if (idx >= 0) {
+          const copy = [...prevArr]
+          copy[idx] = { ...(copy[idx] as object), ...saved }
+          return copy
+        }
+        return [saved, ...prevArr]
+      } catch (e) {
+        return prev
+      }
+    })
+  } catch (e) {
+    // ignore optimistic set failures
+  }
+
+  // Invalidate and refetch the exact keys used by the page
+  queryClient.invalidateQueries({ queryKey: recordsKey, refetchType: 'all' })
+  queryClient.invalidateQueries({ queryKey: totalsKey, refetchType: 'all' })
+
+  await Promise.allSettled([
+    queryClient.refetchQueries({ queryKey: recordsKey, type: 'active' }),
+    queryClient.refetchQueries({ queryKey: totalsKey, type: 'active' })
+  ])
+  console.debug('Refetch done for', { recordsKey, totalsKey })
+
+  success('Uloženo', 'Mzdový záznam byl uložen do Supabase')
+  setEditingEmployee(null)
+  setEditForm({})
+    } catch (err: unknown) {
+      // better logging for unknown errors
+  const message = (err as unknown && (err as { message?: string })?.message) ?? String(err)
+  console.error('Chyba při ukládání mzdy', err)
+  toastError('Chyba při ukládání', message)
     }
   }
 
@@ -291,7 +375,7 @@ export default function PayrollMonthly() {
               Mzdy {getMonthName(parseInt(month!))} {year}
             </h1>
             <p className="text-gray-600">
-              {svj?.name} • {payrollData.employees.length} zaměstnanců
+              {(svj as unknown as { name?: string })?.name || ''} • {payrollData.employees.length} zaměstnanců
             </p>
           </div>
         </div>
@@ -386,8 +470,8 @@ export default function PayrollMonthly() {
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-sm font-medium text-blue-700">
-                        {employee.firstName[0]}{employee.lastName[0]}
+                        <span className="text-sm font-medium text-blue-700">
+                        {(employee.firstName?.[0] ?? '')}{(employee.lastName?.[0] ?? '')}
                       </span>
                     </div>
                     <div>
@@ -409,8 +493,8 @@ export default function PayrollMonthly() {
                       <>
                         <Button 
                           size="sm" 
-                          onClick={handleSaveEmployee}
-                          disabled={updateSalaryMutation.isPending}
+                            onClick={handleSaveEmployee}
+                            disabled={updateSalaryMutation.isPending || isNaN(Number(editForm.grossSalary)) || Number(editForm.grossSalary) < 0}
                         >
                           <Save className="h-4 w-4 mr-1" />
                           Uložit
@@ -425,6 +509,10 @@ export default function PayrollMonthly() {
                         <Button size="sm" variant="outline" onClick={() => handleEditEmployee(employee)}>
                           <Edit className="h-4 w-4 mr-1" />
                           Upravit
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleRecalculateForEmployee(employee)}>
+                          <Calculator className="h-4 w-4 mr-1" />
+                          Přepočítat
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => navigate(`/employees/${employee.id}`)}>
                           <Eye className="h-4 w-4 mr-1" />
@@ -455,8 +543,23 @@ export default function PayrollMonthly() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">Hrubá mzda</label>
                       <input
                         type="number"
-                        value={editForm.grossSalary || 0}
-                        onChange={(e) => setEditForm({...editForm, grossSalary: parseFloat(e.target.value)})}
+                        value={editForm.grossSalary ?? 0}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value)
+                          if (Number.isNaN(v)) {
+                            setEditForm({...editForm, grossSalary: NaN})
+                            return
+                          }
+                          const computed = computeFromGross(v)
+                          setEditForm({...editForm, ...computed})
+                        }}
+                        onBlur={(e) => {
+                          const v = parseFloat(e.target.value)
+                          if (!Number.isNaN(v)) {
+                            const computed = computeFromGross(v)
+                            setEditForm({...editForm, ...computed})
+                          }
+                        }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Hrubá mzda"
                       />
@@ -649,7 +752,7 @@ export default function PayrollMonthly() {
                           const vars = {
                             jmeno: employee.firstName,
                             prijmeni: employee.lastName,
-                            nazev_svj: svj?.name || 'SVJ',
+                            nazev_svj: (svj as unknown as { name?: string })?.name || 'SVJ',
                             rok: String(year),
                             mesic: getMonthName(parseInt(month!)),
                             hruba_mzda: String(employee.salaryRecord?.grossSalary ?? ''),

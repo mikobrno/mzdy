@@ -1,5 +1,6 @@
 import { supabase } from '@/supabaseClient'
 import { DashboardStats } from '@/types'
+import { toDbStatus, DEFAULT_DB_PAYROLL_STATUS } from '@/lib/payroll-status'
 
 class SupabaseApiService {
   async getSVJList(): Promise<unknown[]> {
@@ -50,7 +51,37 @@ class SupabaseApiService {
     if (svjId) query = query.eq('svj_id', svjId)
     const { data, error } = await query
     if (error) throw error
-    return (data as unknown[]) || []
+    const rows = (data as unknown[]) || []
+    // Map DB column names to frontend-friendly shape expected by components
+    return rows.map((r) => {
+      const rec = r as Record<string, unknown>
+      const full = String(rec['full_name'] ?? rec['name'] ?? '')
+      const parts = full.trim() ? full.split(/\s+/) : ['']
+      const firstName = parts[0] || ''
+      const lastName = parts.slice(1).join(' ') || ''
+      return {
+        id: String(rec['id']),
+        svjId: rec['svj_id'] ?? rec['svjId'] ?? null,
+        firstName,
+        lastName,
+        address: rec['address'] ?? '',
+        birthNumber: rec['personal_id_number'] ?? rec['birth_number'] ?? '',
+        phone: rec['phone_number'] ?? rec['phone'] ?? '',
+        email: rec['email'] ?? '',
+        contractType: rec['employment_type'] ?? rec['contract_type'] ?? null,
+        salary: Number(String(rec['salary_amount'] ?? rec['salary'] ?? 0)) || 0,
+        bankAccount: rec['bank_account'] ?? '',
+        executions: rec['executions'] ?? [],
+        hasPinkDeclaration: !!rec['has_pink_declaration'] || false,
+        healthInsurance: rec['health_insurance_company_id'] ?? rec['health_insurance'] ?? '',
+        socialInsurance: rec['social_insurance'] ?? null,
+        isActive: rec['is_active'] === undefined ? true : !!rec['is_active'],
+        startDate: rec['start_date'] ? new Date(String(rec['start_date'])) : (rec['created_at'] ? new Date(String(rec['created_at'])) : null),
+        endDate: rec['end_date'] ? new Date(String(rec['end_date'])) : null,
+        createdAt: rec['created_at'] ? new Date(String(rec['created_at'])) : new Date(),
+        updatedAt: rec['updated_at'] ? new Date(String(rec['updated_at'])) : new Date(),
+      }
+    })
   }
 
   async getHealthInsuranceCompanies(): Promise<unknown[]> {
@@ -66,41 +97,57 @@ class SupabaseApiService {
   }
 
   async createEmployee(payload: Record<string, unknown>): Promise<unknown> {
-  // Map UI field names to actual DB column names to avoid schema-mismatch errors
-  const p = payload as unknown as Record<string, unknown>
-  const toInsert: Record<string, unknown> = {}
+    // Map UI field names to actual DB column names to avoid schema-mismatch errors
+    const p = payload as unknown as Record<string, unknown>
+    const toInsert: Record<string, unknown> = {}
 
-  // Required/primary fields
-  if (p['svj_id']) toInsert['svj_id'] = p['svj_id']
-  // Accept both `full_name` or `name` from older UI variants
-  toInsert['full_name'] = p['full_name'] ?? p['name'] ?? null
-  if (p['email']) toInsert['email'] = p['email']
+    // Required/primary fields
+    if (p['svj_id']) toInsert['svj_id'] = p['svj_id']
+    // Accept both `full_name` or `name` from older UI variants
+    toInsert['full_name'] = p['full_name'] ?? p['name'] ?? null
+    if (p['email']) toInsert['email'] = p['email']
 
-  // Map phone -> phone_number
-  if (p['phone'] !== undefined) toInsert['phone_number'] = p['phone']
-  else if (p['phone_number'] !== undefined) toInsert['phone_number'] = p['phone_number']
+    // Map phone -> phone_number
+    if (p['phone'] !== undefined) toInsert['phone_number'] = p['phone']
+    else if (p['phone_number'] !== undefined) toInsert['phone_number'] = p['phone_number']
 
-  // Employment type
-  if (p['employment_type']) toInsert['employment_type'] = p['employment_type']
+    // Employment type
+    if (p['employment_type']) toInsert['employment_type'] = p['employment_type']
 
-  // Salary amount: accept several aliases and ensure number
-  const salaryRaw = p['salary_amount'] ?? p['salary'] ?? p['gross_wage'] ?? p['gross_salary']
-  if (salaryRaw !== undefined && salaryRaw !== null && salaryRaw !== '') toInsert['salary_amount'] = Number(salaryRaw as unknown) || 0
+    // Salary amount: accept several aliases and ensure number
+    const salaryRaw = p['salary_amount'] ?? p['salary'] ?? p['gross_wage'] ?? p['gross_salary']
+    if (salaryRaw !== undefined && salaryRaw !== null && salaryRaw !== '') toInsert['salary_amount'] = Number(salaryRaw as unknown) || 0
 
-  // Optional fields
-  if (p['health_insurance_company_id']) toInsert['health_insurance_company_id'] = p['health_insurance_company_id']
-  if (p['bank_account']) toInsert['bank_account'] = p['bank_account']
-  if (p['personal_id_number']) toInsert['personal_id_number'] = p['personal_id_number']
-  if (p['address']) toInsert['address'] = p['address']
-  if (p['note']) toInsert['note'] = p['note']
+    // Optional fields
+    if (p['health_insurance_company_id']) toInsert['health_insurance_company_id'] = p['health_insurance_company_id']
+    if (p['bank_account']) toInsert['bank_account'] = p['bank_account']
+    if (p['personal_id_number']) toInsert['personal_id_number'] = p['personal_id_number']
+    if (p['address']) toInsert['address'] = p['address']
+    if (p['note']) toInsert['note'] = p['note']
 
-  // Default is_active to true if not provided
-  if (p['is_active'] !== undefined) toInsert['is_active'] = p['is_active']
-  else toInsert['is_active'] = true
+    // Default is_active to true if not provided
+    if (p['is_active'] !== undefined) toInsert['is_active'] = p['is_active']
+    else toInsert['is_active'] = true
 
-  const { data, error } = await supabase.from('employees').insert([toInsert]).select().single()
-  if (error) throw error
-  return data
+    const { data, error } = await supabase.from('employees').insert([toInsert]).select().single()
+    if (error) throw error
+    const rec = (data as Record<string, unknown>) || {}
+    const full = String(rec['full_name'] ?? rec['name'] ?? '')
+    const parts = full.trim() ? full.split(/\s+/) : ['']
+    const firstName = parts[0] || ''
+    const lastName = parts.slice(1).join(' ') || ''
+    return {
+      id: String(rec['id'] ?? ''),
+      svjId: rec['svj_id'] ?? rec['svjId'] ?? null,
+      firstName,
+      lastName,
+      email: rec['email'] ?? '',
+      phone: rec['phone_number'] ?? rec['phone'] ?? '',
+      contractType: rec['employment_type'] ?? rec['contract_type'] ?? null,
+      salary: Number(String(rec['salary_amount'] ?? rec['salary'] ?? 0)) || 0,
+      isActive: rec['is_active'] === undefined ? true : !!rec['is_active'],
+      createdAt: rec['created_at'] ? new Date(String(rec['created_at'])) : new Date(),
+    }
   }
 
   async updateEmployee(id: string, payload: Record<string, unknown>): Promise<unknown> {
@@ -173,18 +220,28 @@ class SupabaseApiService {
 
   async createSalaryRecord(payload: Record<string, unknown>): Promise<unknown> {
     // Accept both old and new field names
+    const incoming = (payload.status as string) ?? (payload['status'] as string) ?? undefined
+    const status = toDbStatus(incoming ?? DEFAULT_DB_PAYROLL_STATUS)
+
     const toInsert = {
       employee_id: payload.employeeId || payload.employee_id,
       month: payload.month,
       year: payload.year,
-      status: payload.status || 'pending',
+      status,
       base_salary: payload.base_salary ?? payload.gross_wage ?? payload.gross_salary ?? 0,
       bonuses: payload.bonuses ?? 0,
       gross_salary: payload.gross_wage ?? payload.gross_salary ?? payload.base_salary ?? 0,
       net_salary: payload.net_wage ?? payload.net_salary ?? 0
     }
-  const { data, error } = await supabase.from('payrolls').insert([toInsert]).select().single()
-    if (error) throw error
+
+    const { data, error } = await supabase.from('payrolls').insert([toInsert]).select().single()
+    if (error) {
+      const msg = (error as { message?: string })?.message ?? String(error)
+      if (/status.*check/i.test(msg)) {
+        throw new Error('Invalid payroll status. Allowed: "pending" or "approved". The app will auto-normalize from draft/prepared/paid.')
+      }
+      throw error
+    }
     return data
   }
 
