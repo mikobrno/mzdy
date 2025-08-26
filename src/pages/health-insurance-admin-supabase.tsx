@@ -53,18 +53,7 @@ export default function HealthInsuranceAdmin() {
   // Mutations (using mock endpoints for now)
   const createCompanyMutation = useMutation({
     mutationFn: async (data: Partial<HealthInsuranceCompany>) => {
-      try {
-        const response = await fetch("/api/health-insurance/companies", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-        if (!response.ok) throw new Error('Failed to create');
-        return response.json();
-      } catch (err) {
-        // Mock response for development
-        return { ...data, id: Date.now().toString() };
-      }
+  return await apiService.createHealthInsuranceCompany(data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['health-insurance-companies'] });
@@ -76,17 +65,7 @@ export default function HealthInsuranceAdmin() {
 
   const updateCompanyMutation = useMutation({
     mutationFn: async (data: HealthInsuranceCompany) => {
-      try {
-        const response = await fetch(`/api/health-insurance/companies/${data.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-        if (!response.ok) throw new Error('Failed to update');
-        return response.json();
-      } catch (err) {
-        return data; // Mock response
-      }
+  return await apiService.updateHealthInsuranceCompany(data.id, data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['health-insurance-companies'] });
@@ -98,14 +77,7 @@ export default function HealthInsuranceAdmin() {
 
   const deleteCompanyMutation = useMutation({
     mutationFn: async (id: string) => {
-      try {
-        const response = await fetch(`/api/health-insurance/companies/${id}`, { 
-          method: "DELETE" 
-        });
-        if (!response.ok) throw new Error('Failed to delete');
-      } catch (err) {
-        console.log('Delete operation simulated');
-      }
+  await apiService.deleteHealthInsuranceCompany(id)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['health-insurance-companies'] });
@@ -140,30 +112,9 @@ export default function HealthInsuranceAdmin() {
     }
     
     try {
-      const response = await fetch("/api/health-insurance/exports", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ svjId, period }),
-      });
-      
-      if (response.ok) {
-        const results = await response.json();
-        setExportResults(results);
-        success('Export byl vygenerován');
-      } else {
-        // Mock response for development
-        const mockResults = [
-          {
-            insuranceName: "VZP",
-            insuranceCode: "111",
-            totalBase: 125000,
-            totalInsurance: 11250,
-            xmlFile: "vzp_export.xml"
-          }
-        ];
-        setExportResults(mockResults);
-        success('Export byl vygenerován (mock data)');
-      }
+  const results = await apiService.exportHealthInsuranceData(svjId, period)
+  setExportResults(results)
+  success('Export byl vygenerován')
     } catch (err) {
       error('Chyba při generování exportu');
     }

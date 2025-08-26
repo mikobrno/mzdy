@@ -1,0 +1,9 @@
+node_modules/
+dist/
+public/
+scripts/
+supabase/
+*.tsbuildinfo
+.vscode/
+.env
+.env.*

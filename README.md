@@ -1,3 +1,17 @@
+# mzdy-svj-portal
+
+## Development notes
+CI: Supabase Guard
+------------------
+This repository includes a GitHub Actions workflow `.github/workflows/supabase-guard.yml` which runs on every pull request.
+It runs `npm run lint` and (optionally) `npm run audit:endpoints` if the script is present.
+
+To run the same endpoint audit locally:
+
+```powershell
+npm run audit:endpoints
+```
+
 # Mzdy SVJ Portal
 
 Moderní webová aplikace pro správu mzdové agendy společenství vlastníků jednotek (SVJ).

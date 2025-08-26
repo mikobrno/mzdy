@@ -1,9 +1,17 @@
+/**
+ * NOTE:
+ * This file is the only allowed place in the codebase where `fetch` or `axios`
+ * can be used directly. ESLint rules are globally strict, but overridden here
+ * to permit low-level HTTP handling. All other files must use Supabase client
+ * or wrappers from `supabase-api.ts`, `db.ts`, or `rpc.ts`.
+ */
+
 // Rozšířené API služby s real API integration a error handling
 
 import { useToast } from '@/components/ui/toast'
 
 // API konfigurace
-const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:5000/api'
+const API_BASE_URL = (import.meta as { env?: { VITE_API_BASE_URL?: string } }).env?.VITE_API_BASE_URL || 'http://localhost:5000/api'
 const API_TIMEOUT = 10000 // 10 sekund
 
 // API client s interceptory pro error handling
@@ -116,24 +124,24 @@ export class ApiClient {
     return this.request<T>(endpoint, { method: 'GET' })
   }
 
-  async post<T>(endpoint: string, data?: any): Promise<T> {
+  async post<T>(endpoint: string, data?: Record<string, unknown>): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
+    body: data ? JSON.stringify(data) : undefined,
     })
   }
 
-  async put<T>(endpoint: string, data?: any): Promise<T> {
+  async put<T>(endpoint: string, data?: Record<string, unknown>): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
+    body: data ? JSON.stringify(data) : undefined,
     })
   }
 
-  async patch<T>(endpoint: string, data?: any): Promise<T> {
+  async patch<T>(endpoint: string, data?: Record<string, unknown>): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'PATCH',
-      body: data ? JSON.stringify(data) : undefined,
+    body: data ? JSON.stringify(data) : undefined,
     })
   }
 
@@ -160,9 +168,9 @@ export class ApiClient {
 export class ApiError extends Error {
   public code: string
   public status: number
-  public details?: any
+  public details?: unknown
 
-  constructor(message: string, code: string, status: number, details?: any) {
+  constructor(message: string, code: string, status: number, details?: unknown) {
     super(message)
     this.name = 'ApiError'
     this.code = code
@@ -261,7 +269,7 @@ export function reactQueryErrorHandler(error: unknown) {
 export class OfflineService {
   private static CACHE_KEY = 'offline_cache'
   
-  static saveToCache(key: string, data: any) {
+  static saveToCache(key: string, data: unknown) {
     try {
       const cache = this.getCache()
       cache[key] = {

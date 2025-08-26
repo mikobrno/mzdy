@@ -3,7 +3,7 @@
 export function formatBankAccount(input: string): string {
   let v = (input || '').replace(/\s+/g, '')
   // allow only digits, dash and slash
-  v = v.replace(/[^0-9\/-]/g, '')
+  v = v.replace(/[^0-9/-]/g, '')
   // ensure only one slash
   const parts = v.split('/')
   if (parts.length > 2) {
@@ -39,7 +39,6 @@ export function isValidBirthNumber(value: string): boolean {
   if (digits.length !== 9 && digits.length !== 10) return false
 
   // basic date plausibility
-  const yy = parseInt(digits.slice(0, 2), 10)
   let mm = parseInt(digits.slice(2, 4), 10)
   const dd = parseInt(digits.slice(4, 6), 10)
   // female +50 months, special cases +20/+70 ignored here

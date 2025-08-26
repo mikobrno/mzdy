@@ -1,4 +1,6 @@
-import { apiClient, ApiError, OfflineService } from './api-client'
+import { ApiError, OfflineService } from './api-client'
+import { selectAll, insertOne, updateById } from '@/lib/db'
+import { callRpc, callFunction } from '@/lib/rpc'
 import type { SVJ } from '@/types'
 
 export interface SVJListParams {
@@ -50,35 +52,54 @@ export class SVJService {
     page: number
     limit: number
   }> {
+    // We'll read all SVJs and apply client-side filtering / pagination to avoid direct fetch.
     try {
-      const queryParams = new URLSearchParams()
-      
-      if (params.page) queryParams.append('page', params.page.toString())
-      if (params.limit) queryParams.append('limit', params.limit.toString())
-      if (params.search) queryParams.append('search', params.search)
-      if (params.sortBy) queryParams.append('sortBy', params.sortBy)
-      if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder)
-      if (params.isActive !== undefined) queryParams.append('isActive', params.isActive.toString())
+      let all = await selectAll<SVJ>('svj')
 
-      const response = await apiClient.get<{
-        data: SVJ[]
-        total: number
-        page: number
-        limit: number
-      }>(`/svj?${queryParams.toString()}`)
+      // filter by isActive
+      if (params.isActive !== undefined) {
+        all = all.filter(s => {
+          const rec = s as unknown as Record<string, unknown>
+          return Boolean(rec['is_active']) === Boolean(params.isActive)
+        })
+      }
 
-      // Cache pro offline režim
+      // search by name
+      if (params.search) {
+        const q = params.search.toLowerCase()
+        all = all.filter(s => String((s as unknown as Record<string, unknown>)['name'] ?? '').toLowerCase().includes(q))
+      }
+
+      // sort
+      if (params.sortBy) {
+        const key = params.sortBy
+        all = all.sort((a, b) => {
+          const va = (a as unknown as Record<string, unknown>)[key as string]
+          const vb = (b as unknown as Record<string, unknown>)[key as string]
+          if (va == null && vb == null) return 0
+          if (va == null) return params.sortOrder === 'asc' ? -1 : 1
+          if (vb == null) return params.sortOrder === 'asc' ? 1 : -1
+          if (va < vb) return params.sortOrder === 'asc' ? -1 : 1
+          if (va > vb) return params.sortOrder === 'asc' ? 1 : -1
+          return 0
+        })
+      }
+
+  const total = all.length
+  const page = params.page ?? 1
+  const limit = (params.limit ?? total) || 10
+      const start = (page - 1) * limit
+      const data = all.slice(start, start + limit)
+
+      const response = { data, total, page, limit }
       OfflineService.saveToCache(`${this.CACHE_KEY}_list`, response)
-
       return response
     } catch (error) {
-      // Fallback na cached data
       const cachedData = OfflineService.getFromCache(`${this.CACHE_KEY}_list`)
       if (cachedData) {
         console.warn('Používám cached SVJ data')
         return cachedData
       }
-      
       throw error
     }
   }
@@ -86,12 +107,12 @@ export class SVJService {
   // Získání detailu SVJ
   static async getSVJDetail(id: string): Promise<SVJ> {
     try {
-      const response = await apiClient.get<SVJ>(`/svj/${id}`)
-      
-      // Cache pro offline režim
-      OfflineService.saveToCache(`${this.CACHE_KEY}_${id}`, response)
-      
-      return response
+  const arr = await selectAll<SVJ>('svj', { id: id as unknown as string | number | boolean | null })
+  const response = arr[0]
+  // Cache pro offline režim
+  OfflineService.saveToCache(`${this.CACHE_KEY}_${id}`, response)
+  if (!response) throw new Error('Not found')
+  return response
     } catch (error) {
       // Fallback na cached data
       const cachedData = OfflineService.getFromCache(`${this.CACHE_KEY}_${id}`)
@@ -99,7 +120,7 @@ export class SVJService {
         console.warn(`Používám cached data pro SVJ ${id}`)
         return cachedData
       }
-      
+
       throw error
     }
   }
@@ -107,12 +128,9 @@ export class SVJService {
   // Vytvoření nového SVJ
   static async createSVJ(data: SVJCreateData): Promise<SVJ> {
     try {
-      const response = await apiClient.post<SVJ>('/svj', data)
-      
-      // Invalidace cache
-      this.invalidateListCache()
-      
-      return response
+  const response = await insertOne<SVJ>('svj', data as unknown as Partial<SVJ>)
+  this.invalidateListCache()
+  return response
     } catch (error) {
       if (error instanceof ApiError && error.status === 422) {
         // Specifické zpracování validačních chyb
@@ -130,13 +148,10 @@ export class SVJService {
   // Aktualizace SVJ
   static async updateSVJ(id: string, data: SVJUpdateData): Promise<SVJ> {
     try {
-      const response = await apiClient.put<SVJ>(`/svj/${id}`, data)
-      
-      // Invalidace cache
-      this.invalidateCache(id)
-      this.invalidateListCache()
-      
-      return response
+  const response = await updateById<SVJ>('svj', id, data as Partial<SVJ>)
+  this.invalidateCache(id)
+  this.invalidateListCache()
+  return response
     } catch (error) {
       if (error instanceof ApiError && error.status === 422) {
         throw new ApiError(
@@ -153,11 +168,10 @@ export class SVJService {
   // Deaktivace SVJ
   static async deactivateSVJ(id: string): Promise<void> {
     try {
-      await apiClient.patch(`/svj/${id}/deactivate`)
-      
-      // Invalidace cache
-      this.invalidateCache(id)
-      this.invalidateListCache()
+  // Toggle flag in DB
+  await updateById('svj', id, { is_active: false } as unknown as Record<string, unknown>)
+  this.invalidateCache(id)
+  this.invalidateListCache()
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) {
         throw new ApiError(
@@ -172,26 +186,18 @@ export class SVJService {
 
   // Aktivace SVJ
   static async activateSVJ(id: string): Promise<void> {
-    try {
-      await apiClient.patch(`/svj/${id}/activate`)
-      
-      // Invalidace cache
-      this.invalidateCache(id)
-      this.invalidateListCache()
-    } catch (error) {
-      throw error
-    }
+  await updateById('svj', id, { is_active: true } as unknown as Record<string, unknown>)
+  this.invalidateCache(id)
+  this.invalidateListCache()
   }
 
   // Statistiky SVJ
   static async getSVJStatistics(): Promise<SVJStatistics> {
     try {
-      const response = await apiClient.get<SVJStatistics>('/svj/statistics')
-      
-      // Cache na kratší dobu
-      OfflineService.saveToCache(`${this.CACHE_KEY}_statistics`, response)
-      
-      return response
+  // Prefer server RPC if available
+  const response = await callRpc<SVJStatistics>('get_svj_statistics')
+  OfflineService.saveToCache(`${this.CACHE_KEY}_statistics`, response)
+  return response
     } catch (error) {
       // Fallback na cached data
       const cachedData = OfflineService.getFromCache(`${this.CACHE_KEY}_statistics`, 2 * 60 * 1000) // 2 minuty
@@ -199,42 +205,27 @@ export class SVJService {
         console.warn('Používám cached statistiky SVJ')
         return cachedData
       }
-      
+
       throw error
     }
   }
 
   // Export dat SVJ
   static async exportSVJData(id: string, format: 'xlsx' | 'csv' | 'pdf' = 'xlsx'): Promise<Blob> {
-    try {
-      const response = await fetch(`${apiClient}/svj/${id}/export?format=${format}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
-      })
-
-      if (!response.ok) {
-        throw new ApiError('Chyba při exportu dat', 'EXPORT_ERROR', response.status)
-      }
-
-      return await response.blob()
-    } catch (error) {
-      throw error
-    }
+  // Prefer calling an RPC or edge function for exports
+  const text = await callRpc<string>('export_svj_data', { svj_id: id, format })
+  const mime = format === 'pdf' ? 'application/pdf' : format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  return new Blob([text as unknown as string], { type: mime })
   }
 
   // Nahrání loga SVJ
   static async uploadSVJLogo(id: string, file: File): Promise<{ logoUrl: string }> {
     try {
-      const formData = new FormData()
-      formData.append('logo', file)
-
-      const response = await apiClient.upload<{ logoUrl: string }>(`/svj/${id}/logo`, formData)
-      
-      // Invalidace cache
-      this.invalidateCache(id)
-      
-      return response
+  // Convert file to base64 and call an edge function / RPC that handles storage
+  const fileBase64 = await this.fileToBase64(file)
+  const resp = await callFunction<{ logoUrl: string }>('upload_svj_logo', { id, fileBase64, fileName: file.name, mimeType: file.type })
+  this.invalidateCache(id)
+  return resp
     } catch (error) {
       if (error instanceof ApiError && error.status === 413) {
         throw new ApiError('Soubor je příliš velký. Maximální velikost je 2MB.', 'FILE_TOO_LARGE', 413)
@@ -249,8 +240,8 @@ export class SVJService {
   // Vyhledání SVJ podle IČO
   static async findSVJByICO(ico: string): Promise<SVJ | null> {
     try {
-      const response = await apiClient.get<{ data: SVJ | null }>(`/svj/find-by-ico/${ico}`)
-      return response.data
+  const arr = await selectAll<SVJ>('svj', { ico: ico as unknown as string | number | boolean | null })
+  return arr[0] ?? null
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) {
         return null
@@ -262,15 +253,23 @@ export class SVJService {
   // Ověření dostupnosti názvu SVJ
   static async checkSVJNameAvailability(name: string, excludeId?: string): Promise<boolean> {
     try {
-      const queryParams = new URLSearchParams({ name })
-      if (excludeId) queryParams.append('excludeId', excludeId)
-      
-      const response = await apiClient.get<{ available: boolean }>(`/svj/check-name?${queryParams.toString()}`)
-      return response.available
+      const arr = await selectAll<SVJ>('svj')
+  const found = arr.find(s => String((s as unknown as Record<string, unknown>)['name'] ?? '') === name && String((s as unknown as Record<string, unknown>)['id']) !== excludeId)
+  return found == null
     } catch (error) {
       // V případě chyby předpokládáme, že název není dostupný
       return false
     }
+  }
+
+  // helper: convert File to base64
+  private static fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result))
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
   }
 
   // Privátní metody pro cache management

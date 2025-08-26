@@ -3,13 +3,12 @@ import { useState, useEffect } from 'react';
 import { apiService } from '@/services/api'
 import PayrollDetailModal from '@/components/PayrollDetailModal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import axios from 'axios';
-import { Dialog } from '@/components/ui/dialog';
-import { Select } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+// Removed unused UI imports
 
 // GraphQL queries removed — this page now uses Supabase via apiService
+
+type PayrollItem = { status?: string };
+type EmployeeLike = { id: string; name?: string; baseSalary?: number; payrolls?: PayrollItem[]; payrollStatus?: string }
 
 export default function PayrollDetailPage() {
   const { svjId } = useParams();
@@ -17,9 +16,9 @@ export default function PayrollDetailPage() {
   const currentMonth = currentDate.getMonth() + 1;
   const currentYear = currentDate.getFullYear();
 
-  const [data, setData] = useState<any | null>(null)
+  const [data, setData] = useState<{ svj?: { employees?: EmployeeLike[]; name?: string } } | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<any | null>(null)
+  const [error, setError] = useState<Error | null>(null)
 
   const refetch = async () => {
     setLoading(true)
@@ -27,7 +26,7 @@ export default function PayrollDetailPage() {
       const svj = await apiService.getSVJ(svjId as string)
       setData({ svj })
     } catch (err) {
-      setError(err)
+      setError(err instanceof Error ? err : new Error(String(err)))
     } finally {
       setLoading(false)
     }
@@ -38,16 +37,16 @@ export default function PayrollDetailPage() {
   }, [svjId])
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedPayroll, setSelectedPayroll] = useState(null);
+  const [selectedPayroll, setSelectedPayroll] = useState<EmployeeLike | null>(null);
   const [isEditable, setIsEditable] = useState(false);
 
-  const handleOpenModal = (payrollDetails, editable) => {
+  const handleOpenModal = (payrollDetails: EmployeeLike, editable: boolean) => {
     setSelectedPayroll(payrollDetails);
     setIsEditable(editable);
     setIsModalOpen(true);
   };
 
-  const handleCreatePayroll = async (employeeId) => {
+  const handleCreatePayroll = async (employeeId: string) => {
     try {
       // create salary record with minimal data — real calculation should be server-side
       await apiService.createSalaryRecord({ employeeId, year: currentYear, month: currentMonth, gross_salary: 0, net_salary: 0, status: 'draft' })
@@ -61,13 +60,10 @@ export default function PayrollDetailPage() {
 
   const handleExportBankOrder = async () => {
     try {
-      const response = await axios.post('/api/generate-bank-order', {
-        svjId,
-        month: currentMonth,
-        year: currentYear,
-      });
+  // Use apiClient via apiService to generate bank order on server
+  const data = await apiService.generateBankOrder(svjId as string, { month: currentMonth, year: currentYear })
 
-      const blob = new Blob([response.data], { type: 'application/xml' });
+  const blob = new Blob([data], { type: 'application/xml' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -85,8 +81,8 @@ export default function PayrollDetailPage() {
   if (error) return <div>Chyba při načítání dat: {error.message}</div>;
 
   const svj = data?.svj;
-  const employees = svj.employees.map((employee) => {
-    const payroll = employee.payrolls[0];
+  const employees = (svj.employees || []).map((employee: EmployeeLike) => {
+    const payroll = (employee.payrolls || [])[0] as PayrollItem | undefined;
     let payrollStatus = 'Nezpracováno';
     if (payroll) {
       payrollStatus = payroll.status === 'approved' ? 'Schváleno' : 'V přípravě';

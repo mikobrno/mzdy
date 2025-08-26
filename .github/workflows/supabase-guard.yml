@@ -1,0 +1,56 @@
+name: Supabase Guard
+on:
+  pull_request:
+    branches: [ "**" ]
+  push:
+    branches: [ "main" ]
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # needed to diff against base
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install deps (CI)
+        run: npm ci
+
+      # Lint only changed files in PRs (under src/**). Full lint on main.
+      - name: Lint PR changed files
+        if: ${{ github.event_name == 'pull_request' }}
+        shell: bash
+        run: |
+          # Ensure base ref is available
+          git fetch origin ${{ github.base_ref }} --depth=1 || true
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'src/**/*.{ts,tsx,js,jsx}' || true)
+          if [ -z "$CHANGED" ]; then
+            echo "No changed files in src/** to lint."
+            exit 0
+          fi
+          echo "Linting changed files:"
+          echo "$CHANGED"
+          npx eslint $CHANGED --max-warnings=0
+
+      - name: Lint main full
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        run: npm run lint
+
+      - name: Audit endpoints (only Supabase + whitelist)
+        run: |
+          # Run the audit script only if it's defined in package.json.
+          if node -e "const s=require('./package.json').scripts; process.exit(s && s['audit:endpoints'] ? 0 : 2)"; then
+            npm run audit:endpoints
+          else
+            echo "No npm script 'audit:endpoints' found — skipping endpoint audit"
+          fi
+
+      - name: Audit self-tests (AST fixtures)
+        run: npm run test:audit

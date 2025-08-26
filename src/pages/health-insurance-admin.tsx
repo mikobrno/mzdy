@@ -57,13 +57,7 @@ export default function HealthInsuranceAdmin() {
   // Mutations
   const createCompanyMutation = useMutation({
     mutationFn: async (data: Partial<HealthInsuranceCompany>) => {
-      // Pro nyní používáme mock endpoint, později nahradíme skutečným API
-      const response = await fetch("/api/health-insurance/companies", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      return response.json();
+  return await apiService.createHealthInsuranceCompany(data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['health-insurance-companies'] });
@@ -75,12 +69,7 @@ export default function HealthInsuranceAdmin() {
 
   const updateCompanyMutation = useMutation({
     mutationFn: async (data: HealthInsuranceCompany) => {
-      const response = await fetch(`/api/health-insurance/companies/${data.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      return response.json();
+  return await apiService.updateHealthInsuranceCompany(data.id, data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['health-insurance-companies'] });
@@ -92,7 +81,7 @@ export default function HealthInsuranceAdmin() {
 
   const deleteCompanyMutation = useMutation({
     mutationFn: async (id: string) => {
-      await fetch(`/api/health-insurance/companies/${id}`, { method: "DELETE" });
+  await apiService.deleteHealthInsuranceCompany(id)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['health-insurance-companies'] });
@@ -122,13 +111,7 @@ export default function HealthInsuranceAdmin() {
 
   const handleExport = () => {
     if (!svjId || !period) return;
-    fetch("/api/health-insurance/exports", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ svjId, period }),
-    })
-      .then((r) => r.json())
-      .then(setExportResults);
+  apiService.exportHealthInsuranceData(svjId, period).then(setExportResults)
   };
 
   return (
