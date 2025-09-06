@@ -169,8 +169,8 @@ export default function Dashboard() {
           <h2 className="text-2xl font-bold text-gray-900">
             Přehled spravovaných SVJ
           </h2>
-          <Button asChild>
-            <Link to="/svj/new">
+          <Button asChild data-test="add-svj-btn">
+            <Link to="/svj/new" data-test="add-svj-link">
               <Building2 className="h-4 w-4 mr-2" />
               Přidat nové SVJ
             </Link>

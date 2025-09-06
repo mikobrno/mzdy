@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/supabaseClient'; // Používáme alias @, který je nastaven v tsconfig.json
 import { isSupabaseConfigured } from '@/lib/supabase';
-import { Building2, MapPin, FileText, Plus, Users, Settings, Trash2 } from 'lucide-react';
+import { Building2, MapPin, FileText, Plus, Users, Settings } from 'lucide-react';
 
 // Definice typu pro objekt SVJ pro bezpečnost v TypeScriptu
 interface Svj {
@@ -18,23 +18,18 @@ export function SvjPage() {
   const [svjData, setSvjData] = useState<Svj[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchSvj = async () => {
       try {
         setLoading(true);
         if (!isSupabaseConfigured) {
-          // Mock režim – načtení z localStorage (nový klíč + zpětná kompatibilita)
-            const primary = window.localStorage.getItem('dev_fallback_svj');
-            const legacy = window.localStorage.getItem('mock_svj');
-            interface RawMock { id: string; name: string; ico?: string; address?: string }
-            const primaryList: RawMock[] = primary ? JSON.parse(primary) as RawMock[] : [];
-            const legacyList: RawMock[] = legacy ? JSON.parse(legacy) as RawMock[] : [];
-            const seen = new Set(primaryList.map((x) => x.id));
-            const list: RawMock[] = [...primaryList, ...legacyList.filter((x) => !seen.has(x.id))];
+          // Mock režim – načtení z localStorage
+            const raw = window.localStorage.getItem('mock_svj');
+            const list = raw ? JSON.parse(raw) : [];
             // Map na očekávaný tvar
-            const mapped: Svj[] = list.map((r) => {
+            interface RawMock { id: string; name: string; ico?: string; address?: string }
+            const mapped: Svj[] = (list as RawMock[]).map((r) => {
               const addr = (r.address || '') as string;
               const parts = addr.split(',').map(s => s.trim());
               return {
@@ -148,44 +143,6 @@ export function SvjPage() {
                       <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">{svj.name}</h3>
                     </div>
                   </div>
-                  <button
-                    data-test="svj-delete-button"
-                    onClick={async () => {
-                      if (deletingId) return;
-                      if(!window.confirm(`Opravdu smazat SVJ "${svj.name}"?`)) return;
-                      setError(null);
-                      setDeletingId(svj.id);
-                      try {
-                        if (isSupabaseConfigured) {
-                          const { error: delErr } = await supabase.from('svj').delete().eq('id', svj.id);
-                          if (delErr) throw delErr;
-                        } else {
-                          // fallback lokální mazání (zachováno pro dev režim)
-                          const primary = window.localStorage.getItem('dev_fallback_svj');
-                          const legacy = window.localStorage.getItem('mock_svj');
-                          const parse = (raw: string|null) => raw ? JSON.parse(raw) : [];
-                          interface Raw { id?: string }
-                          const filt = (arr: Raw[]) => arr.filter(x => x && x.id !== svj.id)
-                          const pList = filt(parse(primary) as Raw[])
-                          const lList = filt(parse(legacy) as Raw[])
-                          window.localStorage.setItem('dev_fallback_svj', JSON.stringify(pList));
-                          window.localStorage.setItem('mock_svj', JSON.stringify(lList));
-                        }
-                        setSvjData(prev => prev.filter(s => s.id !== svj.id));
-                      } catch (e: unknown) {
-                        const msg = (e as { message?: string })?.message || 'Mazání selhalo';
-                        setError(prev => prev ? prev + '\n' + msg : msg);
-                      } finally {
-                        setDeletingId(null);
-                      }
-                    }}
-                    disabled={!!deletingId}
-                    className={`flex items-center gap-1 text-xs border rounded px-2 py-1 transition-colors ${deletingId === svj.id ? 'text-gray-400 border-gray-200' : 'text-red-600 border-red-200 hover:text-red-700 hover:border-red-300'}`}
-                    title={isSupabaseConfigured ? 'Smazat v databázi' : 'Smazat lokální test data'}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                    {deletingId === svj.id ? 'Mažu...' : 'Smazat'}
-                  </button>
                 </div>
 
                 {/* Informace */}

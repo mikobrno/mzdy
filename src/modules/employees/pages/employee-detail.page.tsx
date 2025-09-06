@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { apiService } from '@/services/api';
 
 // Typová definice zůstává stejná
@@ -17,6 +17,7 @@ interface Employee {
 
 export function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,9 +32,9 @@ export function EmployeeDetailPage() {
       try {
         setLoading(true);
         const data = await apiService.getEmployee(id as string);
-        setEmployee(data as any);
-      } catch (error: any) {
-        setError(error.message);
+        setEmployee(data as unknown as Employee);
+      } catch (err) {
+        setError((err as { message?: string }).message || 'Chyba při načítání.');
       } finally {
         setLoading(false);
       }
@@ -63,6 +64,16 @@ export function EmployeeDetailPage() {
         <Link to="/employees" className="text-blue-500 hover:underline">
           &larr; Zpět na seznam zaměstnanců
         </Link>
+      </div>
+
+      <div className="mb-4 flex gap-3">
+        <button
+          data-test="create-payroll-button"
+          onClick={() => navigate(`/payrolls/new?employee_id=${employee.id}`)}
+          className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm"
+        >
+          Zpracovat mzdu
+        </button>
       </div>
 
       <div className="bg-white shadow rounded-lg p-6">

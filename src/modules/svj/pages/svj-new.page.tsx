@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiService } from '@/services/api';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import { useToast } from '@/components/ui/toast';
 import { Building2, ArrowLeft, Save } from 'lucide-react';
 
@@ -30,13 +31,29 @@ export function SvjNewPage() {
         data_box_id: dataBoxId,
       };
 
-      await apiService.createSVJ(payload);
+      console.log('[SVJ-NEW] Odesílám payload', payload);
+      let created: any;
+      if (!isSupabaseConfigured) {
+        // Mock režim – uložíme do localStorage
+        const key = 'mock_svj';
+        const existingRaw = window.localStorage.getItem(key);
+        const list = existingRaw ? JSON.parse(existingRaw) : [];
+        created = { id: crypto.randomUUID(), name, ico, address, bank_account: bankAccount, data_box_id: dataBoxId, created_at: new Date().toISOString() };
+        list.push(created);
+        window.localStorage.setItem(key, JSON.stringify(list));
+        console.log('[SVJ-NEW][MOCK] Uloženo do localStorage', created);
+      } else {
+        created = await apiService.createSVJ(payload);
+        console.log('[SVJ-NEW] Vytvořeno:', created);
+      }
 
       // Pěkné toast oznámení místo alert
-      success('SVJ vytvořeno', 'Společenství vlastníků jednotek bylo úspěšně vytvořeno.');
-      navigate('/svj');
-    } catch (err: any) {
-      showError('Chyba při vytváření SVJ', err?.message || 'Nepodařilo se vytvořit SVJ');
+  success('SVJ vytvořeno', 'Společenství vlastníků jednotek bylo úspěšně vytvořeno.');
+  navigate('/svj'); // správná route (lista SVJ)
+  } catch (err: unknown) {
+  console.error('[SVJ-NEW] Chyba při vytváření', err);
+  const message = (err as { message?: string } | null)?.message || 'Nepodařilo se vytvořit SVJ'
+  showError('Chyba při vytváření SVJ', message);
     } finally {
       setLoading(false);
     }
@@ -72,6 +89,7 @@ export function SvjNewPage() {
                 Název SVJ *
               </label>
               <input
+                data-test="svj-name-input"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -168,6 +186,7 @@ export function SvjNewPage() {
             </Link>
 
             <button
+              data-test="svj-save-button"
               type="submit"
               disabled={loading}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-6 py-2 rounded-lg transition-colors"

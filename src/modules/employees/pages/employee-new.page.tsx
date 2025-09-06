@@ -92,7 +92,7 @@ export function EmployeeNewPage() {
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <label className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">Přiřadit k SVJ</span>
-              <select className="border rounded px-3 py-2" value={form.svj_id} onChange={e => handleChange('svj_id', e.target.value)} required>
+              <select data-test="employee-svj-select" className="border rounded px-3 py-2" value={form.svj_id} onChange={e => handleChange('svj_id', e.target.value)} required>
                 <option value="">Vyberte SVJ</option>
                 {svjList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
@@ -100,12 +100,12 @@ export function EmployeeNewPage() {
 
             <label className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">Jméno</span>
-              <input className="border rounded px-3 py-2" value={form.full_name} onChange={e => handleChange('full_name', e.target.value)} required />
+              <input data-test="employee-fullName-input" className="border rounded px-3 py-2" value={form.full_name} onChange={e => handleChange('full_name', e.target.value)} required />
             </label>
 
             <label className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">E-mail</span>
-              <input type="email" className="border rounded px-3 py-2" value={form.email} onChange={e => handleChange('email', e.target.value)} required />
+              <input data-test="employee-email-input" type="email" className="border rounded px-3 py-2" value={form.email} onChange={e => handleChange('email', e.target.value)} required />
             </label>
 
             <label className="flex flex-col gap-1">
@@ -138,7 +138,7 @@ export function EmployeeNewPage() {
 
             <div className="col-span-full flex justify-end gap-2">
               <Button variant="outline" onClick={() => navigate('/employees')}>Zrušit</Button>
-              <Button type="submit" disabled={loading}>{loading ? 'Ukládání...' : 'Uložit zaměstnance'}</Button>
+              <Button data-test="employee-save-button" type="submit" disabled={loading}>{loading ? 'Ukládání...' : 'Uložit zaměstnance'}</Button>
             </div>
           </form>
         </CardContent>

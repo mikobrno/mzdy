@@ -265,7 +265,8 @@ export default function EmployeesPage() {
               {filteredEmployees.map((employee) => (
                 <div
                   key={employee.id}
-                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="employee-row flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  data-test="employee-row"
                 >
                   <div className="flex items-center space-x-4">
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold ${

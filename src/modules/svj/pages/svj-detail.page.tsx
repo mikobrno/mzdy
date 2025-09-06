@@ -76,7 +76,7 @@ export function SvjDetailPage() {
 
   useEffect(() => {
     if (svj) {
-      setEditForm(svj)
+      setEditForm(svj as SVJ)
       setNotes(svjNotesService.list(svj.id))
     }
   }, [svj])
@@ -108,7 +108,7 @@ export function SvjDetailPage() {
   }
 
   const handleCancel = () => {
-    setEditForm(svj)
+  setEditForm(svj as SVJ)
     setIsEditing(false)
   }
 
@@ -346,6 +346,7 @@ export function SvjDetailPage() {
                 ? 'border-blue-500 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             )}
+            data-test="svj-employees-tab"
           >
             <Users className="h-4 w-4 inline mr-2" />
             Zaměstnanci ({activeEmployees.length})
@@ -599,7 +600,7 @@ export function SvjDetailPage() {
                   <Users className="h-4 w-4 mr-2" /> Spravovat zaměstnance
                 </Link>
               </Button>
-              <Button onClick={() => navigate(`/employees/new?svjId=${svj.id}`)}>
+              <Button data-test="add-employee-button" onClick={() => navigate(`/employees/new?svjId=${svj.id}`)}>
                 <Plus className="h-4 w-4 mr-2" /> Přidat zaměstnance
               </Button>
             </div>

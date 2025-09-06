@@ -3,43 +3,45 @@ export interface SVJ {
   name: string
   ico: string
   address: string
-  bankAccount: string
-  dataBoxId: string
-  contactPerson: string
-  contactEmail: string
-  quickDescription: string
-  reportDeliveryMethod: 'manager' | 'client'
+  bankAccount?: string
+  dataBoxId?: string
+  contactPerson?: string
+  contactEmail?: string
+  quickDescription?: string
+  reportDeliveryMethod?: 'manager' | 'client'
   isActive?: boolean
   registryData?: {
-    officialName: string
-    verificationDate: Date
-    isVerified: boolean
+    officialName?: string
+    verificationDate?: Date | string
+    isVerified?: boolean
   }
   createdAt: Date
-  updatedAt: Date
+  updatedAt?: Date
+  [key: string]: unknown
 }
 
 export interface Employee {
   id: string
-  svjId: string
+  svjId: string | null
   firstName: string
   lastName: string
-  address: string
-  birthNumber: string
-  phone: string
+  address?: string
+  birthNumber?: string
+  phone?: string
   email: string
-  contractType: 'dpp' | 'committee_member' | 'full_time'
+  contractType?: 'dpp' | 'committee_member' | 'full_time' | null
   salary: number
-  bankAccount: string
-  executions: Execution[]
-  hasPinkDeclaration: boolean
-  healthInsurance: string
+  bankAccount?: string
+  executions?: unknown[]
+  hasPinkDeclaration?: boolean
+  healthInsurance?: string
   socialInsurance?: string
   isActive: boolean
-  startDate: Date
-  endDate?: Date
+  startDate?: Date | string
+  endDate?: Date | string
   createdAt: Date
-  updatedAt: Date
+  updatedAt?: Date
+  [key: string]: unknown
 }
 
 export interface Execution {
@@ -127,8 +129,8 @@ export interface AuditLog {
   action: string
   entityType: string
   entityId: string
-  oldValue?: any
-  newValue?: any
+  oldValue?: unknown
+  newValue?: unknown
   timestamp: Date
   ipAddress?: string
   userAgent?: string

@@ -5,14 +5,10 @@ import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { apiService } from '@/services/api';
 import { useToast } from '@/components/ui/toast';
-import { Plus, Edit2, Trash2, Download, Upload } from 'lucide-react';
+import { Plus, Edit2, Trash2, Download } from 'lucide-react';
+import type { HealthInsuranceCompany as ApiHealthInsuranceCompany } from '@/services/supabase-api';
 
-interface HealthInsuranceCompany {
-  id: string;
-  name: string;
-  code: string;
-  xml_export_format: string;
-}
+type HealthInsuranceCompany = ApiHealthInsuranceCompany & { xml_export_format?: string }
 
 interface ExportResult {
   insuranceName: string;
@@ -53,7 +49,7 @@ export default function HealthInsuranceAdmin() {
   // Mutations (using mock endpoints for now)
   const createCompanyMutation = useMutation({
     mutationFn: async (data: Partial<HealthInsuranceCompany>) => {
-  return await apiService.createHealthInsuranceCompany(data)
+      return await apiService.createHealthInsuranceCompany(data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['health-insurance-companies'] });
@@ -65,7 +61,7 @@ export default function HealthInsuranceAdmin() {
 
   const updateCompanyMutation = useMutation({
     mutationFn: async (data: HealthInsuranceCompany) => {
-  return await apiService.updateHealthInsuranceCompany(data.id, data)
+      return await apiService.updateHealthInsuranceCompany(data.id, data as Partial<HealthInsuranceCompany>)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['health-insurance-companies'] });
@@ -120,15 +116,7 @@ export default function HealthInsuranceAdmin() {
     }
   };
 
-  const downloadFile = (filename: string, data: string, mimeType: string) => {
-    const blob = new Blob([data], { type: mimeType });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    link.click();
-    window.URL.revokeObjectURL(url);
-  };
+  // downloadFile utility removed (unused)
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -220,6 +208,7 @@ export default function HealthInsuranceAdmin() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={svjId}
                 onChange={(e) => setSvjId(e.target.value)}
+                title="Výběr SVJ"
               >
                 <option value="">Vyberte SVJ</option>
                 {svjList.map((svj) => (
@@ -239,6 +228,8 @@ export default function HealthInsuranceAdmin() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={period}
                 onChange={(e) => setPeriod(e.target.value)}
+                aria-label="Období"
+                title="Období"
               />
             </div>
           </div>
@@ -310,6 +301,8 @@ export default function HealthInsuranceAdmin() {
                     value={form.name || ""}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     required
+                    placeholder="Název"
+                    title="Název pojišťovny"
                   />
                 </div>
                 
@@ -323,6 +316,8 @@ export default function HealthInsuranceAdmin() {
                     value={form.code || ""}
                     onChange={(e) => setForm({ ...form, code: e.target.value })}
                     required
+                    placeholder="Kód"
+                    title="Kód pojišťovny"
                   />
                 </div>
                 
@@ -335,6 +330,8 @@ export default function HealthInsuranceAdmin() {
                     value={form.xml_export_format || ""}
                     onChange={(e) => setForm({ ...form, xml_export_format: e.target.value })}
                     required
+                    title="Export formát"
+                    aria-label="Export formát"
                   >
                     <option value="">Vyberte formát</option>
                     {exportTypes.map((type) => (

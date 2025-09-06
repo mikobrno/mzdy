@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,10 @@ import { formatBankAccount, isValidBankAccount, formatBirthNumber, isValidBirthN
 
 export default function EmployeeNewPage() {
   const navigate = useNavigate()
+  const { svjId: routeSvjId } = useParams<{ svjId: string }>()
+  const [search] = useSearchParams()
+  const querySvjId = search.get('svjId') || search.get('svj_id')
+  const effectiveSvjId = routeSvjId || querySvjId || ''
   const { success, error } = useToast()
   const queryClient = useQueryClient()
 
@@ -24,7 +28,7 @@ export default function EmployeeNewPage() {
     contractType: 'full_time',
     healthInsurance: '111',
     hasPinkDeclaration: false,
-    svjId: '1',
+  svjId: effectiveSvjId,
     address: '',
     birthNumber: '',
     isActive: true,
@@ -38,7 +42,10 @@ export default function EmployeeNewPage() {
       success('Zaměstnanec vytvořen')
       navigate(`/employees/${created.id}`)
     },
-    onError: (e: any) => error('Vytvoření se nezdařilo', String(e?.message ?? e))
+    onError: (e: unknown) => {
+      const msg = (e as { message?: string })?.message || String(e)
+      error('Vytvoření se nezdařilo', msg)
+    }
   })
 
   const onSubmit = (e: React.FormEvent) => {
@@ -49,7 +56,11 @@ export default function EmployeeNewPage() {
     if (form.bankAccount && !isValidBankAccount(String(form.bankAccount))) {
       return error('Neplatné číslo účtu (formát 123-123456789/0100)')
     }
-    createMutation.mutate(form)
+    createMutation.mutate({
+      ...form,
+      svjId: effectiveSvjId,
+      isActive: true
+    })
   }
 
   return (
@@ -68,15 +79,15 @@ export default function EmployeeNewPage() {
           <form onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <label className="flex flex-col gap-1">
               <span>Jméno</span>
-              <input className="border rounded px-3 py-2" value={form.firstName ?? ''} onChange={e => setForm(f => ({...f, firstName: e.target.value}))} required />
+              <input name="firstName" data-test="employee-first-name" className="border rounded px-3 py-2" value={form.firstName ?? ''} onChange={e => setForm(f => ({...f, firstName: e.target.value}))} required />
             </label>
             <label className="flex flex-col gap-1">
               <span>Příjmení</span>
-              <input className="border rounded px-3 py-2" value={form.lastName ?? ''} onChange={e => setForm(f => ({...f, lastName: e.target.value}))} required />
+              <input name="lastName" data-test="employee-last-name" className="border rounded px-3 py-2" value={form.lastName ?? ''} onChange={e => setForm(f => ({...f, lastName: e.target.value}))} required />
             </label>
             <label className="flex flex-col gap-1">
               <span>E-mail</span>
-              <input type="email" className="border rounded px-3 py-2" value={form.email ?? ''} onChange={e => setForm(f => ({...f, email: e.target.value}))} required />
+              <input name="email" data-test="employee-email" type="email" className="border rounded px-3 py-2" value={form.email ?? ''} onChange={e => setForm(f => ({...f, email: e.target.value}))} required />
             </label>
             <label className="flex flex-col gap-1">
               <span>Telefon</span>
@@ -118,9 +129,9 @@ export default function EmployeeNewPage() {
             </label>
             <div className="col-span-full flex gap-2 justify-end">
               <Button type="button" variant="outline" onClick={() => navigate(-1)}>Zrušit</Button>
-              <Button type="submit" disabled={createMutation.isPending} className="flex items-center gap-2">
+              <Button type="submit" disabled={createMutation.isPending} className="flex items-center gap-2" data-test="employee-save-btn">
                 <Save className="h-4 w-4" /> Uložit
-+              </Button>
+              </Button>
             </div>
           </form>
         </CardContent>

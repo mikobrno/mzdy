@@ -122,7 +122,7 @@ export function EmployeesPage() {
             Přehled všech zaměstnanců napříč spravovanými SVJ
           </p>
         </div>
-        <Button asChild>
+        <Button asChild data-test="add-employee-button">
           <Link to="/employees/new">
             <Plus className="h-4 w-4 mr-2" />
             Přidat zaměstnance
@@ -244,7 +244,7 @@ export function EmployeesPage() {
         </CardHeader>
         <CardContent>
           {filteredEmployees.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="text-center py-12" data-test="empty-state">
               <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
                 Žádní zaměstnanci nenalezeni
@@ -260,7 +260,7 @@ export function EmployeesPage() {
               </Button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4" data-test="employees-table">
               {filteredEmployees.map((employee) => (
                 <div
                   key={employee.id}

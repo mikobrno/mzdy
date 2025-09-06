@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,6 +22,24 @@ export default function PayrollPage() {
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<'all' | PeriodStatus>('all')
+  const [localPayrolls, setLocalPayrolls] = useState<Array<{ id: string; employee_name?: string; gross_wage?: number }>>([])
+
+  useEffect(() => {
+    const load = () => {
+      try {
+        const raw = localStorage.getItem('dev_fallback_payrolls') || '[]'
+        const list = JSON.parse(raw)
+        if (Array.isArray(list)) {
+          interface P { id?: unknown; employee_name?: unknown; gross_wage?: unknown }
+          setLocalPayrolls(list.map((p: P) => ({ id: String(p.id ?? ''), employee_name: typeof p.employee_name === 'string' ? p.employee_name : '', gross_wage: Number(p.gross_wage) || 0 })))
+        }
+      } catch {/* ignore */}
+    }
+    load()
+    const handler = () => load()
+    window.addEventListener('storage', handler)
+    return () => window.removeEventListener('storage', handler)
+  }, [])
 
   const { data: svjList, isLoading } = useQuery({
     queryKey: ['svj-list'],
@@ -169,7 +187,7 @@ export default function PayrollPage() {
             <select
               aria-label="Stav období"
               value={status}
-              onChange={(e) => setStatus(e.target.value as any)}
+              onChange={(e) => setStatus(e.target.value as 'all' | PeriodStatus)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">Všechny stavy</option>
@@ -239,6 +257,20 @@ export default function PayrollPage() {
           ))
         )}
       </div>
+
+      {localPayrolls.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-xl font-semibold mb-3">Lokální mzdy (dev)</h2>
+          <div className="space-y-2" data-test="local-payroll-list">
+            {localPayrolls.map(p => (
+              <div key={p.id} data-test="payroll-row" className="flex items-center justify-between border rounded px-4 py-2 text-sm">
+                <span>{p.employee_name}</span>
+                <span className="font-medium">{p.gross_wage?.toLocaleString('cs-CZ')} Kč</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

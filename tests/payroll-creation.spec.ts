@@ -14,10 +14,15 @@ async function login(page) {
   const email = page.locator('input[name="email"], input[type="email"]').first()
   const pass = page.locator('input[name="password"], input[type="password"]').first()
   await expect(email).toBeVisible()
-  await email.fill('test@example.com')
-  await pass.fill('password123')
+  await email.fill('admin@example.com')
+  await pass.fill('admin123')
   await page.getByRole('button', { name: /login|přihlásit/i }).click()
-  await page.waitForLoadState('networkidle')
+  await page.waitForFunction(() => {
+    try { return Object.keys(localStorage).some(k => k.includes('auth-token') && localStorage.getItem(k)) } catch { return false }
+  }, { timeout: 10000 }).catch(()=>{})
+  if (/\/login$/.test(page.url())) {
+    await page.goto('/')
+  }
 }
 
 test.describe('Payroll creation', () => {
@@ -38,31 +43,69 @@ test.describe('Payroll creation', () => {
     })
     // 1. Navigate & Select
     await page.goto('/employees')
-    // Locate first employee row (robust fallback chain)
-    const row = page.locator('.employee-row').first()
-    const rowExists = await row.count()
-    let firstRow = row
-    if (rowExists === 0) {
-      // fallback to any table row with at least one cell
+    await page.waitForLoadState('networkidle')
+    // Helper to create employee directly if none exist
+    async function ensureEmployee() {
+  const possibleRow = page.locator('[data-test="employee-row"], .employee-row, table tr').filter({ has: page.locator('td') }).first()
+      if (await possibleRow.count() > 0) return null
+      // attempt UI navigation
+      const newBtn = page.locator('a:has-text("Nový zaměstnanec"), a:has-text("Add Employee"), button:has-text("Přidat zaměstnance"), button:has-text("Add Employee"), a[href="/employees/new"], button:has-text("Nová osoba")').first()
+      if (await newBtn.count()) {
+        await newBtn.click()
+      } else {
+        await page.goto('/employees/new')
+      }
+      await page.waitForURL(/employees\/new/)
+      const firstNameField = page.locator('[name="firstName"], input[name*="first" i]').first()
+      const lastNameField = page.locator('[name="lastName"], input[name*="last" i]').first()
+      await firstNameField.fill('Pay')
+      await lastNameField.fill('Roll')
+      const emailValue = `pay.roll.${Date.now()}@test.com`
+      await page.locator('input[type="email"], input[name="email"]').first().fill(emailValue)
+      const submit = page.locator('button:has-text("Uložit"), button:has-text("Save"), button:has-text("Create"), button:has-text("Vytvořit")').first()
+      await submit.click()
+      // After save might land on employees list OR detail page
+      await page.waitForLoadState('networkidle')
+      // If on detail page (URL has /employees/ + id) that's fine
+      if (/\/employees\//.test(page.url())) {
+        return { created: true, onDetail: true }
+      }
+      // else ensure list visible
+      await page.waitForURL(/employees($|\?)/)
+      return { created: true, onDetail: false }
+    }
+    await ensureEmployee()
+    // Re-evaluate first employee presentation
+  let firstRow = page.locator('[data-test="employee-row"], .employee-row').first()
+    if (await firstRow.count() === 0) {
       firstRow = page.locator('table tr').filter({ has: page.locator('td') }).first()
     }
-    await expect(firstRow).toBeVisible()
-
-    // Extract (best-effort) employee name for later verification
-    let employeeName = (await firstRow.innerText()).trim().split('\n')[0].trim()
-    if (!employeeName || employeeName.length < 3) {
-      // fallback: attempt to combine first two cells
-      const firstCell = await firstRow.locator('td').nth(0).innerText().catch(() => '')
-      const secondCell = await firstRow.locator('td').nth(1).innerText().catch(() => '')
-      employeeName = `${firstCell} ${secondCell}`.trim()
+    // If still not found but we're already on a detail page, skip row selection
+    let employeeName: string
+    if (await firstRow.count() === 0 && /\/employees\//.test(page.url())) {
+      // derive employee name from heading
+      const heading = page.locator('h1, h2').first()
+      employeeName = (await heading.innerText().catch(() => 'Pay Roll')).trim()
+    } else {
+      await expect(firstRow).toBeVisible()
+      // Extract (best-effort) employee name for later verification
+      employeeName = (await firstRow.innerText()).trim().split('\n')[0].trim()
+      if (!employeeName || employeeName.length < 3) {
+        const firstCell = await firstRow.locator('td').nth(0).innerText().catch(() => '')
+        const secondCell = await firstRow.locator('td').nth(1).innerText().catch(() => '')
+        employeeName = `${firstCell} ${secondCell}`.trim()
+      }
+      // Click detail/view button inside the row
+      const viewBtn = firstRow.locator('a:has-text("Detail"), button:has-text("Detail"), a:has-text("View"), button:has-text("View")').first()
+      if (await viewBtn.count()) {
+        await viewBtn.click()
+      } else {
+        await firstRow.click()
+      }
+      await page.waitForURL(/\/employees\//, { timeout: 10000 })
     }
 
-    // Click detail/view button inside the row
-    const viewBtn = firstRow.locator('a:has-text("Detail"), button:has-text("Detail"), a:has-text("View"), button:has-text("View")').first()
-    await viewBtn.click()
-
-    // Wait for navigation to employee detail (heuristic: URL contains /employees/ + id)
-    await page.waitForURL(/\/employees\//, { timeout: 10000 })
+  // employeeName already resolved above
 
     // 2. Initiate Payroll Creation
     const createPayrollBtn = page.locator('button:has-text("Create Payroll"), button:has-text("New Payroll"), button:has-text("Zpracovat mzdu"), button:has-text("Zpracovat"), button:has-text("Nová mzda"), a:has-text("Create Payroll"), a:has-text("New Payroll")').first()
@@ -133,14 +176,40 @@ test.describe('Payroll creation', () => {
   test('should display validation errors when submitting an empty or invalid form', async ({ page }) => {
     // Reuse navigation steps: go to employees and open first employee detail
     await page.goto('/employees')
-    let firstRow = page.locator('.employee-row').first()
-    if (await firstRow.count() === 0) {
-      firstRow = page.locator('table tr').filter({ has: page.locator('td') }).first()
+    await page.waitForLoadState('networkidle')
+  let firstRow2 = page.locator('[data-test="employee-row"], .employee-row').first()
+    if (await firstRow2.count() === 0) {
+      firstRow2 = page.locator('table tr').filter({ has: page.locator('td') }).first()
     }
-    await expect(firstRow).toBeVisible()
-    const viewBtn = firstRow.locator('a:has-text("Detail"), button:has-text("Detail"), a:has-text("View"), button:has-text("View")').first()
-    await viewBtn.click()
-    await page.waitForURL(/\/employees\//, { timeout: 10000 })
+    if (await firstRow2.count() === 0) {
+      // create one quickly
+      await page.goto('/employees/new')
+      await page.locator('[name="firstName"], input[name*="first" i]').first().fill('Validate')
+      await page.locator('[name="lastName"], input[name*="last" i]').first().fill('Case')
+      await page.locator('input[type="email"], input[name="email"]').first().fill(`validate.case.${Date.now()}@test.com`)
+      const submit2 = page.locator('button:has-text("Uložit"), button:has-text("Save"), button:has-text("Create"), button:has-text("Vytvořit")').first()
+      await submit2.click()
+      await page.waitForLoadState('networkidle')
+      if (!/\/employees\//.test(page.url())) {
+        await page.goto('/employees')
+      }
+      firstRow2 = page.locator('.employee-row').first()
+      if (await firstRow2.count() === 0) {
+        firstRow2 = page.locator('table tr').filter({ has: page.locator('td') }).first()
+      }
+    }
+    if (/\/employees\//.test(page.url())) {
+      // already on detail after creation
+    } else {
+      await expect(firstRow2).toBeVisible()
+      const viewBtn2 = firstRow2.locator('a:has-text("Detail"), button:has-text("Detail"), a:has-text("View"), button:has-text("View")').first()
+      if (await viewBtn2.count()) {
+        await viewBtn2.click()
+      } else {
+        await firstRow2.click()
+      }
+      await page.waitForURL(/\/employees\//, { timeout: 10000 })
+    }
 
     // Open payroll creation form
     const createPayrollBtn = page.locator('button:has-text("Create Payroll"), button:has-text("New Payroll"), button:has-text("Zpracovat mzdu"), button:has-text("Zpracovat"), button:has-text("Nová mzda"), a:has-text("Create Payroll"), a:has-text("New Payroll")').first()

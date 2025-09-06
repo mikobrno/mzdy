@@ -3,19 +3,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
-import { SVJ } from "../types/index";
+import type { FrontendSvj } from '@/services/supabase-api';
+import type { HealthInsuranceCompany as ApiHealthInsuranceCompany } from '@/services/supabase-api';
 import { apiService } from '@/services/api';
 import { useToast } from '@/components/ui/toast';
 
-interface HealthInsuranceCompany {
-  id: string;
-  name: string;
-  code: string;
-  // support both snake_case from API and camelCase used in UI code
-  xml_export_format?: string;
-  xmlExportType?: string;
-  pdfTemplateId?: number;
-}
+type HealthInsuranceCompany = ApiHealthInsuranceCompany & { xml_export_format?: string; pdfTemplateId?: string | number | null }
 
 interface ExportResult {
   insuranceName: string;
@@ -34,7 +27,7 @@ const exportTypes = [
 ];
 
 export default function HealthInsuranceAdmin() {
-  const { success, error } = useToast();
+  const { success } = useToast();
   const queryClient = useQueryClient();
   
   const [showForm, setShowForm] = useState(false);
@@ -69,7 +62,7 @@ export default function HealthInsuranceAdmin() {
 
   const updateCompanyMutation = useMutation({
     mutationFn: async (data: HealthInsuranceCompany) => {
-  return await apiService.updateHealthInsuranceCompany(data.id, data)
+      return await apiService.updateHealthInsuranceCompany(data.id, data as Partial<HealthInsuranceCompany>)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['health-insurance-companies'] });
@@ -140,7 +133,7 @@ export default function HealthInsuranceAdmin() {
               title="Vyberte firmu"
             >
               <option value="">Vyberte firmu</option>
-              {svjList.map((s: SVJ) => (
+              {svjList.map((s: FrontendSvj) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>

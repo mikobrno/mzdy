@@ -46,7 +46,7 @@ export default function SVJNewPage() {
           </Button>
           <h1 className="text-3xl font-bold text-gray-900">Přidat SVJ</h1>
         </div>
-        <Button onClick={() => create.mutate()} disabled={create.isPending}>
+        <Button data-test="svj-save-button-alt" onClick={() => create.mutate()} disabled={create.isPending}>
           <Save className="h-4 w-4 mr-2" /> Uložit
         </Button>
       </div>
@@ -62,6 +62,7 @@ export default function SVJNewPage() {
             <div>
               <label className="block text-sm font-medium mb-1">Název</label>
               <input
+                data-test="svj-name-input-alt"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="Název SVJ"

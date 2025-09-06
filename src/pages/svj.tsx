@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { apiService } from '@/services/api'
@@ -45,8 +45,8 @@ export default function SVJListPage() {
           <h1 className="text-3xl font-bold text-gray-900">Správa SVJ</h1>
           <p className="text-gray-600">Zde je seznam všech SVJ a možnost jejich správy.</p>
         </div>
-        <Button asChild variant="default" className="flex items-center gap-2">
-          <Link to="/svj/new">
+        <Button asChild variant="default" className="flex items-center gap-2" data-test="add-svj-btn">
+          <Link to="/svj/new" data-test="add-svj-link">
             <Plus className="h-4 w-4" /> Přidat SVJ
           </Link>
         </Button>
@@ -106,7 +106,7 @@ export default function SVJListPage() {
             </div>
             <select
               value={status}
-              onChange={e => setStatus(e.target.value as any)}
+              onChange={e => setStatus(e.target.value as 'all' | 'active' | 'inactive')}
               className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
               aria-label="Filtrovat podle stavu"
             >
