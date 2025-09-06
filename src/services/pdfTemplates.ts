@@ -1,3 +1,9 @@
+import { callRpc, callFunction } from '@/lib/rpc'
+import { uploadToBucket, getSignedUrl, buildPdfPath } from '@/lib/storage'
+
+// keep local helpers arrayBufferToBase64 and base64ToUint8Array in this file
+// Note: we intentionally keep the public API of this module stable; internals now use Supabase RPCs and Storage
+
 export type PdfFieldMapping = Record<string, string>; // fieldName -> variableName or static value marker
 
 export type PdfTemplate = {
@@ -29,11 +35,6 @@ export function saveAll(items: PdfTemplate[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 }
 
-import { callRpc, callFunction } from '@/lib/rpc'
-import { uploadToBucket, getSignedUrl, buildPdfPath } from '@/lib/storage'
-// keep local helpers arrayBufferToBase64 and base64ToUint8Array in this file
-// Note: we intentionally keep the public API of this module stable; internals now use Supabase RPCs and Storage
-
 export const pdfTemplatesService = {
   async getAll(): Promise<PdfTemplate[]> {
     // Use RPC or direct table read via existing api layer (supabase-api) if available
@@ -64,26 +65,27 @@ export const pdfTemplatesService = {
   },
   async create(t: Omit<PdfTemplate, 'id' | 'createdAt' | 'updatedAt'>): Promise<PdfTemplate> {
     const payload = {
+      id: crypto.randomUUID(), // Generate UUID using built-in crypto API
       name: t.name,
       file_name: t.fileName,
       file_base64: t.fileBase64,
       fields: t.fields,
       mapping: t.mapping,
-    }
+    };
     const r = await callRpc<Record<string, unknown>>('insert_pdf_template', payload).catch(async () => {
-      return await callRpc<Record<string, unknown>>('create_pdf_template', payload)
-    })
-    const rec = r as unknown as Record<string, unknown>
+      return await callRpc<Record<string, unknown>>('create_pdf_template', payload);
+    });
+    const rec = r as unknown as Record<string, unknown>;
     return {
       id: String(rec['id']),
       name: String(rec['name']),
-  fileName: String(rec['file_name'] ?? rec['file_path'] ?? ''),
-  fileBase64: String(rec['file_base64'] ?? ''),
-  fields: (rec['fields'] as unknown as string[]) ?? [],
-  mapping: (rec['field_mappings'] ?? rec['mapping'] ?? {}) as PdfFieldMapping,
-  createdAt: String(rec['created_at']),
-  updatedAt: String(rec['updated_at']),
-    }
+      fileName: String(rec['file_name'] ?? rec['file_path'] ?? ''),
+      fileBase64: String(rec['file_base64'] ?? ''),
+      fields: (rec['fields'] as unknown as string[]) ?? [],
+      mapping: (rec['field_mappings'] ?? rec['mapping'] ?? {}) as PdfFieldMapping,
+      createdAt: String(rec['created_at']),
+      updatedAt: String(rec['updated_at']),
+    };
   },
   async update(id: string, patch: Partial<PdfTemplate>): Promise<PdfTemplate | undefined> {
     const payload: Record<string, unknown> = {}

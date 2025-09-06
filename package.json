@@ -19,7 +19,8 @@
     "type-check": "tsc --noEmit",
     "test:integration": "node test-db-fe-integration.js",
     "test:db-status": "node check-supabase-status.js",
-    "test": "jest"
+  "test": "jest",
+  "test:e2e": "playwright test"
   },
   "dependencies": {
     "@apollo/client": "^4.0.0",

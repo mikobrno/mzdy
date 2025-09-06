@@ -32,6 +32,8 @@ export function LoginPage() {
       navigate('/')
     },
     onError: (error: any) => {
+      // Debug log to verify onError fires in E2E
+      console.error('DEBUG: loginMutation onError was triggered.', error)
       setErrors({ 
         general: error.message || 'Přihlášení se nezdařilo. Zkontrolujte přihlašovací údaje.' 
       })
@@ -89,7 +91,7 @@ export function LoginPage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {errors.general && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2" data-test="login-error">
                   <AlertCircle className="h-4 w-4 text-red-600" />
                   <span className="text-sm text-red-700">{errors.general}</span>
                 </div>

@@ -223,6 +223,13 @@ class SupabaseApiService {
     const incoming = (payload.status as string) ?? (payload['status'] as string) ?? undefined
     const status = toDbStatus(incoming ?? DEFAULT_DB_PAYROLL_STATUS)
 
+    // Support saving extended calculated fields; frontend may send camelCase or legacy snake_case
+    const healthBase = payload['health_insurance_base'] ?? payload['healthInsuranceBase'] ?? null
+    const socialBase = payload['social_insurance_base'] ?? payload['socialInsuranceBase'] ?? null
+    const healthAmt = payload['health_insurance_amount'] ?? payload['healthInsurance'] ?? null
+    const socialAmt = payload['social_insurance_amount'] ?? payload['socialInsurance'] ?? null
+    const taxAdv = payload['tax_advance'] ?? payload['tax'] ?? null
+
     const toInsert = {
       employee_id: payload.employeeId || payload.employee_id,
       month: payload.month,
@@ -231,10 +238,19 @@ class SupabaseApiService {
       base_salary: payload.base_salary ?? payload.gross_wage ?? payload.gross_salary ?? 0,
       bonuses: payload.bonuses ?? 0,
       gross_salary: payload.gross_wage ?? payload.gross_salary ?? payload.base_salary ?? 0,
-      net_salary: payload.net_wage ?? payload.net_salary ?? 0
+      net_salary: payload.net_wage ?? payload.net_salary ?? 0,
+      health_insurance_base: healthBase,
+      social_insurance_base: socialBase,
+      health_insurance_amount: healthAmt,
+      social_insurance_amount: socialAmt,
+      tax_advance: taxAdv
     }
 
-    const { data, error } = await supabase.from('payrolls').insert([toInsert]).select().single()
+    // Upsert by (employee_id, year, month) so opakované ukládání nepřidává duplicity
+    const { data, error } = await supabase.from('payrolls')
+      .upsert([toInsert], { onConflict: 'employee_id,year,month' })
+      .select()
+      .single()
     if (error) {
       const msg = (error as { message?: string })?.message ?? String(error)
       if (/status.*check/i.test(msg)) {
@@ -352,16 +368,16 @@ class SupabaseApiService {
   }
 
   async getDashboardStats(): Promise<DashboardStats> {
-    const { data: svjData } = await supabase.from('svj').select('id', { count: 'exact' })
-    const { data: empData } = await supabase.from('employees').select('id', { count: 'exact' }).eq('is_active', true)
-    const { data: pendingData } = await supabase.from('payrolls').select('id', { count: 'exact' }).in('status', ['draft', 'processing'])
-    const { data: completedData } = await supabase.from('payrolls').select('id', { count: 'exact' }).eq('status', 'approved')
-
+    const { data: svjData } = await supabase.from('svj').select('id')
+    const { data: empData } = await supabase.from('employees').select('id').eq('is_active', true)
+    // DB povoluje pouze 'pending' a 'approved' => pending = status pending
+    const { data: pendingData } = await supabase.from('payrolls').select('id').eq('status', 'pending')
+    const { data: completedData } = await supabase.from('payrolls').select('id').eq('status', 'approved')
     return {
-  totalSvj: (svjData as unknown as unknown[])?.length || 0,
-  totalEmployees: (empData as unknown as unknown[])?.length || 0,
-  pendingSalaries: (pendingData as unknown as unknown[])?.length || 0,
-  completedSalariesThisMonth: (completedData as unknown as unknown[])?.length || 0,
+      totalSvj: (svjData as unknown[] | null)?.length || 0,
+      totalEmployees: (empData as unknown[] | null)?.length || 0,
+      pendingSalaries: (pendingData as unknown[] | null)?.length || 0,
+      completedSalariesThisMonth: (completedData as unknown[] | null)?.length || 0,
       pendingCampaigns: 0,
       recentActivities: [],
       userNote: ''

@@ -5,7 +5,6 @@ import {
   Calculator,
   Eye,
   EyeOff,
-  Building2,
   Mail,
   Lock,
   AlertCircle,
@@ -32,9 +31,10 @@ export default function Login() {
     onSuccess: () => {
       navigate('/')
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : undefined
       setErrors({ 
-        general: error.message || 'Přihlášení se nezdařilo. Zkontrolujte přihlašovací údaje.' 
+        general: message || 'Přihlášení se nezdařilo. Zkontrolujte přihlašovací údaje.' 
       })
     }
   })
@@ -93,7 +93,7 @@ export default function Login() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Obecná chyba */}
               {errors.general && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2" data-test="login-error">
                   <AlertCircle className="h-4 w-4 text-red-600" />
                   <span className="text-sm text-red-700">{errors.general}</span>
                 </div>
@@ -197,7 +197,7 @@ export default function Login() {
               <p className="text-sm text-gray-600 text-center mb-3">Demo účty pro testování:</p>
               <div className="space-y-2 text-xs">
                 <div className="bg-gray-50 p-2 rounded">
-                  <strong>Admin:</strong> admin@example.com / admin123
+                  <strong>Admin:</strong> admin@onlinesprava.cz / 123456
                 </div>
                 <div className="bg-gray-50 p-2 rounded">
                   <strong>Účetní:</strong> ucetni@example.com / ucetni123

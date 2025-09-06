@@ -247,7 +247,7 @@ function MappingModal({ item, onClose, onSave }: { item: PdfTemplate, onClose: (
               {Object.entries(local).map(([field, variable]) => (
                 <div key={field} className="flex gap-2 items-center">
                   <input value={field} onChange={e => {
-                    const v = e.target.value; const entries = Object.entries(local).filter(([k]) => k !== field); const next = Object.fromEntries([...entries, [v, variable]] as any); setLocal(next);
+                    const v = e.target.value; const entries = Object.entries(local).filter(([k]) => k !== field); const next = Object.fromEntries([...entries, [v, variable]] as [string, string][]); setLocal(next);
                   }} className="w-full px-2 py-1 border rounded" placeholder="Název pole" />
                   <input value={variable} onChange={e => setLocal(prev => ({ ...prev, [field]: e.target.value }))} className="w-full px-2 py-1 border rounded" placeholder="Proměnná (např. {{rok}}) nebo konstanta" />
                 </div>

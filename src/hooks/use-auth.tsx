@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext, createContext, ReactNode } from 'react'
 import { User } from '@/types'
-import { supabase } from '@/lib/supabase'
+import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 
 interface AuthContextType {
   user: User | null
@@ -57,7 +57,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     setIsLoading(true)
     try {
-  // Pouze Supabase auth
+      if (!isSupabaseConfigured) {
+        // Mock login fallback for E2E/dev when no Supabase env provided
+        const demoUsers: Record<string, { password: string; role: string; permissions: string[] }> = {
+          'admin@onlinesprava.cz': { password: '123456', role: 'admin', permissions: ['write_all', 'read_all'] },
+          'ucetni@example.com': { password: 'ucetni123', role: 'accountant', permissions: ['read_all'] },
+          'manazer@example.com': { password: 'manazer123', role: 'manager', permissions: ['read_all'] }
+        }
+        const demo = demoUsers[email]
+        if (!demo || demo.password !== password) {
+          throw new Error('Přihlášení se nezdařilo. Zkontrolujte přihlašovací údaje.')
+        }
+        setUser({
+          id: 'mock-' + demo.role,
+          email,
+          firstName: demo.role,
+          lastName: 'Demo',
+          role: demo.role as User['role'],
+          permissions: demo.permissions,
+          isActive: true,
+          createdAt: new Date()
+        })
+        return
+      }
+
       const { error, data } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
         console.error('Chyba při přihlášení:', error.message)
@@ -66,8 +89,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.session?.user) {
         setUser(mapSupabaseUser(data.session.user))
       }
-    } catch (err: any) {
-      throw err
+    } catch (err) {
+      throw err as Error
     } finally {
       setIsLoading(false)
     }
@@ -91,18 +114,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isInRole = (role: string | string[]): boolean => {
     if (!user) return false
     const roles = Array.isArray(role) ? role : [role]
-    return roles.includes(user.role as any)
+    return roles.includes(user.role as User['role'])
   }
 
-  function mapSupabaseUser(sUser: { id: string; email?: string | null; user_metadata?: any }): User {
-    // Zde lze doplnit fetch na profilovou tabulku (např. profiles) pro role/permissions
-    const role = sUser.user_metadata?.role || 'employee'
-    const permissions: string[] = sUser.user_metadata?.permissions || []
+  function mapSupabaseUser(sUser: { id: string; email?: string | null; user_metadata?: Record<string, unknown> }): User {
+    const meta = (sUser.user_metadata || {}) as Record<string, unknown>
+    const roleValue = typeof meta.role === 'string' ? meta.role : 'employee'
+    const role = (['employee','super_admin','main_accountant','payroll_accountant','committee_member'].includes(roleValue)
+      ? roleValue
+      : 'employee') as User['role']
+    const permissions = Array.isArray(meta.permissions)
+      ? (meta.permissions.filter(p => typeof p === 'string') as string[])
+      : []
+    const firstName = typeof meta.firstName === 'string' ? meta.firstName : ''
+    const lastName = typeof meta.lastName === 'string' ? meta.lastName : ''
     return {
       id: sUser.id,
       email: sUser.email || '',
-      firstName: sUser.user_metadata?.firstName || '',
-      lastName: sUser.user_metadata?.lastName || '',
+      firstName,
+      lastName,
       role,
       permissions,
       isActive: true,
@@ -111,27 +141,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signUpWithEmail(email: string, password: string) {
-    try {
-      const { data, error } = await supabase.auth.signUp({ email, password })
-      if (error) {
-        console.error('Chyba při registraci:', error.message)
-        throw new Error('Registrace selhala. Zkontrolujte zadané údaje.')
-      }
-      return data
-    } catch (err) {
-      throw err
+    const { data, error } = await supabase.auth.signUp({ email, password })
+    if (error) {
+      console.error('Chyba při registraci:', error.message)
+      throw new Error('Registrace selhala. Zkontrolujte zadané údaje.')
     }
+    return data
   }
 
   async function sendPasswordResetEmail(email: string) {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email)
-      if (error) {
-        console.error('Chyba při odesílání resetu hesla:', error.message)
-        throw new Error('Odeslání resetu hesla selhalo. Zkontrolujte e-mailovou adresu.')
-      }
-    } catch (err) {
-      throw err
+    const { error } = await supabase.auth.resetPasswordForEmail(email)
+    if (error) {
+      console.error('Chyba při odesílání resetu hesla:', error.message)
+      throw new Error('Odeslání resetu hesla selhalo. Zkontrolujte e-mailovou adresu.')
     }
   }
 
