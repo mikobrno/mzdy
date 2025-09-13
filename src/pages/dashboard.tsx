@@ -17,12 +17,12 @@ export default function Dashboard() {
 
   const { data: svjList, isLoading: svjLoading } = useQuery({
     queryKey: ['svj-list'],
-    queryFn: apiService.getSVJList
+    queryFn: () => apiService.getSVJList()
   })
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard-stats'],
-    queryFn: apiService.getDashboardStats
+    queryFn: () => apiService.getDashboardStats()
   })
 
   const updateNoteMutation = useMutation({

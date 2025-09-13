@@ -38,12 +38,12 @@ export default function HealthInsuranceAdmin() {
   // Fetch data from Supabase
   const { data: companies = [], isLoading } = useQuery({
     queryKey: ['health-insurance-companies'],
-    queryFn: apiService.getHealthInsuranceCompanies
+    queryFn: () => apiService.getHealthInsuranceCompanies()
   });
 
   const { data: svjList = [] } = useQuery({
     queryKey: ['svj-list'],
-    queryFn: apiService.getSVJList
+    queryFn: () => apiService.getSVJList()
   });
 
   // Mutations (using mock endpoints for now)

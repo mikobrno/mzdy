@@ -36,7 +36,7 @@ export default function SettingsMain() {
   // Fetch real data for dashboard stats
   const { data: dashboardStats } = useQuery({
     queryKey: ['dashboard-stats'],
-    queryFn: apiService.getDashboardStats
+    queryFn: () => apiService.getDashboardStats()
   });
 
   // Mock settings status (would be fetched from configuration tables)

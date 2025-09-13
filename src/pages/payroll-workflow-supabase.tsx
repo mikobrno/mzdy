@@ -31,13 +31,13 @@ function PayrollWorkflow() {
   // Fetch SVJ list
   const { data: svjList = [] } = useQuery({
     queryKey: ['svj-list'],
-    queryFn: apiService.getSVJList
+    queryFn: () => apiService.getSVJList()
   });
 
   // Fetch all payrolls to analyze workflow status
   const { data: allPayrolls = [] } = useQuery({
     queryKey: ['all-payrolls'],
-    queryFn: apiService.getAllPayrolls
+    queryFn: () => apiService.getAllPayrolls()
   });
 
   // Transform data for workflow view

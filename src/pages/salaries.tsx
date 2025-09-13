@@ -26,7 +26,7 @@ export default function SalariesPage() {
 
   const { data: svjList, isLoading } = useQuery({
     queryKey: ['svj-list'],
-    queryFn: apiService.getSVJList,
+    queryFn: () => apiService.getSVJList(),
     staleTime: 1000 * 60 * 5,
   })
 

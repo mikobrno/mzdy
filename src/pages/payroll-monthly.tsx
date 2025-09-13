@@ -242,6 +242,7 @@ export default function PayrollMonthly() {
   // 🔧 Hard invalidate/refetch exact page keys so UI updates immediately
   const recordsKey = ['payroll', 'records', svjId, month]
   const totalsKey = ['payroll', 'totals', svjId, month]
+  const salaryRecordsKey = ['salary-records', svjId, year, month]
 
   // Optional optimistic update: merge saved row into existing cached records if present
   try {
@@ -268,10 +269,12 @@ export default function PayrollMonthly() {
   // Invalidate and refetch the exact keys used by the page
   queryClient.invalidateQueries({ queryKey: recordsKey, refetchType: 'all' })
   queryClient.invalidateQueries({ queryKey: totalsKey, refetchType: 'all' })
+  queryClient.invalidateQueries({ queryKey: salaryRecordsKey, refetchType: 'all' })
 
   await Promise.allSettled([
     queryClient.refetchQueries({ queryKey: recordsKey, type: 'active' }),
-    queryClient.refetchQueries({ queryKey: totalsKey, type: 'active' })
+    queryClient.refetchQueries({ queryKey: totalsKey, type: 'active' }),
+    queryClient.refetchQueries({ queryKey: salaryRecordsKey, type: 'active' })
   ])
   console.debug('Refetch done for', { recordsKey, totalsKey })
 

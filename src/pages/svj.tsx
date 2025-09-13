@@ -13,7 +13,7 @@ export default function SVJListPage() {
 
   const { data: svjList, isLoading } = useQuery({
     queryKey: ['svj-list'],
-    queryFn: apiService.getSVJList
+    queryFn: () => apiService.getSVJList()
   })
 
   const filtered = (svjList || []).filter(s => {

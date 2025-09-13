@@ -20,7 +20,7 @@ export default function DynamicVariables() {
   // Fetch variables from Supabase
   const { data: variables = [], isLoading } = useQuery({
     queryKey: ['dynamic-variables'],
-    queryFn: apiService.getDynamicVariables
+    queryFn: () => apiService.getDynamicVariables()
   });
 
   // Create variable mutation

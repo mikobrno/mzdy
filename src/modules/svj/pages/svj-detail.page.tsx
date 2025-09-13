@@ -112,8 +112,8 @@ export function SvjDetailPage() {
     setIsEditing(false)
   }
 
-  const activeEmployees = employees?.filter((emp: any) => emp.is_active) || []
-  const inactiveEmployees = employees?.filter((emp: any) => !emp.is_active) || []
+  const activeEmployees = employees?.filter((emp: any) => emp.isActive) || []
+  const inactiveEmployees = employees?.filter((emp: any) => emp.isActive === false) || []
   const currentYear = new Date().getFullYear()
   const currentMonth = new Date().getMonth() + 1
 
@@ -241,7 +241,7 @@ export function SvjDetailPage() {
                 Upravit
               </Button>
               <Button asChild>
-                <Link to={`/payroll`}>
+                <Link to={`/payroll/${svj.id}/${currentYear}/${currentMonth}`}>
                   <Calculator className="h-4 w-4 mr-2" />
                   Zpracovat mzdy
                 </Link>
@@ -315,7 +315,7 @@ export function SvjDetailPage() {
                 </div>
               </div>
               <Button asChild size="sm">
-                <Link to={`/payroll`}>
+                <Link to={`/payroll/${svj.id}/${currentYear}/${currentMonth}`}>
                   Zobrazit mzdy
                 </Link>
               </Button>
@@ -533,7 +533,7 @@ export function SvjDetailPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <Button asChild className="w-full justify-start">
-                  <Link to={`/payroll`}>
+                  <Link to={`/payroll/${svj.id}/${currentYear}/${currentMonth}`}>
                     <Calculator className="h-4 w-4 mr-2" />
                     Zpracovat mzdy
                   </Link>
@@ -617,12 +617,12 @@ export function SvjDetailPage() {
                   <CardContent>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${emp.is_active ? 'bg-green-500' : 'bg-gray-400'}`}>
-                          {emp.first_name?.charAt(0)}{emp.last_name?.charAt(0)}
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${emp.isActive ? 'bg-green-500' : 'bg-gray-400'}`}>
+                          {emp.firstName?.charAt(0)}{emp.lastName?.charAt(0)}
                         </div>
                         <div>
-                          <div className="font-medium">{emp.first_name} {emp.last_name}</div>
-                          <div className="text-sm text-gray-600">{getEmployeeContractTypeLabel(emp.contract_type)} • {formatCurrency(emp.salary)}</div>
+                          <div className="font-medium">{emp.firstName} {emp.lastName}</div>
+                          <div className="text-sm text-gray-600">{getEmployeeContractTypeLabel(emp.contractType)} • {formatCurrency(emp.salary)}</div>
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -648,7 +648,7 @@ export function SvjDetailPage() {
             <h2 className="text-lg font-medium">Mzdová agenda {currentYear}</h2>
             <div className="flex gap-2">
               <Button asChild>
-                <Link to={`/payroll`}>Zobrazit mzdovou agendu</Link>
+                <Link to={`/payroll/${svj.id}/${currentYear}/${currentMonth}`}>Zobrazit mzdovou agendu</Link>
               </Button>
               <Button onClick={() => navigate(`/payroll/${svj.id}/${currentYear}/${currentMonth}`)}>
                 Zpracovat tento měsíc

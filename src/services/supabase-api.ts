@@ -75,6 +75,8 @@ class SupabaseApiService {
   // --- Dev fallback (bez backendu / bez RLS povolení) ---
   private LOCAL_KEY_SVJ = 'dev_fallback_svj'
   private LOCAL_KEY_EMP = 'dev_fallback_employees'
+  // legacy local key used by older UI
+  private LEGACY_LOCAL_KEY_SVJ = 'mock_svj'
 
 
   private loadLocal<T>(key: string): T[] {
@@ -92,6 +94,14 @@ class SupabaseApiService {
     try { window.localStorage.setItem(key, JSON.stringify(data)) } catch { /* ignore */ }
   }
 
+  private loadLegacySvj(): LocalSvj[] {
+    if (typeof window === 'undefined') return []
+    try {
+      const raw = window.localStorage.getItem(this.LEGACY_LOCAL_KEY_SVJ)
+      return raw ? (JSON.parse(raw) as LocalSvj[]) : []
+    } catch { return [] }
+  }
+
   private generateId() {
     if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()
     return 'local-' + Math.random().toString(36).slice(2, 11)
@@ -105,19 +115,34 @@ class SupabaseApiService {
   async getSVJList(): Promise<FrontendSvj[]> {
     if (!isSupabaseConfigured) {
       if (DISABLE_LOCAL_FALLBACK) throw new Error('Supabase není nakonfigurován (getSVJList) a fallback je vypnut.')
-      return this.loadLocal<LocalSvj>(this.LOCAL_KEY_SVJ).map(this.mapSvj)
+      // merge primary dev key with legacy mock data
+      const primary = this.loadLocal<LocalSvj>(this.LOCAL_KEY_SVJ)
+      const legacy = this.loadLegacySvj()
+      const seen = new Set(primary.map((x) => x.id))
+      const merged = [...primary, ...legacy.filter((x) => !seen.has(x.id))]
+      return merged.map(this.mapSvj)
     }
     try {
       const { data, error } = await supabase.from('svj').select('*')
       if (error) throw error
-      const fallback = this.loadLocal<LocalSvj>(this.LOCAL_KEY_SVJ)
+      // also read legacy local data to show items created by older UI
+      const primary = this.loadLocal<LocalSvj>(this.LOCAL_KEY_SVJ)
+      const legacy = this.loadLegacySvj()
+      const fallback = (() => {
+        const seen = new Set(primary.map((x) => x.id))
+        return [...primary, ...legacy.filter((x) => !seen.has(x.id))]
+      })()
       // Sloučení – backend má prioritu, ale doplníme lokální (které nemají kolidující ID)
       const ids = new Set((data || []).map((d: unknown) => (d as { id?: string })?.id).filter(Boolean) as string[])
       const merged = [...(data as unknown[] || []), ...fallback.filter(f => !ids.has(f.id))]
       return merged.map(this.mapSvj)
     } catch (e) {
       if (this.isPermissionError(e) && !DISABLE_LOCAL_FALLBACK) {
-        return this.loadLocal<LocalSvj>(this.LOCAL_KEY_SVJ).map(this.mapSvj)
+        const primary = this.loadLocal<LocalSvj>(this.LOCAL_KEY_SVJ)
+        const legacy = this.loadLegacySvj()
+        const seen = new Set(primary.map((x) => x.id))
+        const merged = [...primary, ...legacy.filter((x) => !seen.has(x.id))]
+        return merged.map(this.mapSvj)
       } else if (this.isPermissionError(e) && DISABLE_LOCAL_FALLBACK) {
         throw new Error('RLS blokuje getSVJList a fallback je vypnut (VITE_DISABLE_LOCAL_FALLBACK=true).')
       }
@@ -128,7 +153,11 @@ class SupabaseApiService {
   async getSVJ(id: string): Promise<FrontendSvj | null> {
     if (!isSupabaseConfigured) {
       if (DISABLE_LOCAL_FALLBACK) throw new Error('Supabase není nakonfigurován (getSVJ) a fallback je vypnut.')
-      const local = this.loadLocal<LocalSvj>(this.LOCAL_KEY_SVJ).find(l => l.id === id)
+      const listPrimary = this.loadLocal<LocalSvj>(this.LOCAL_KEY_SVJ)
+      const listLegacy = this.loadLegacySvj()
+      const ids = new Set(listPrimary.map(x => x.id))
+      const combined = [...listPrimary, ...listLegacy.filter(x => !ids.has(x.id))]
+      const local = combined.find(l => l.id === id)
       return local ? this.mapSvj(local) : null
     }
     try {
@@ -138,7 +167,11 @@ class SupabaseApiService {
       return this.mapSvj(data as Record<string, unknown>)
     } catch (e) {
       if (this.isPermissionError(e) && !DISABLE_LOCAL_FALLBACK) {
-        const local = this.loadLocal<LocalSvj>(this.LOCAL_KEY_SVJ).find(l => l.id === id)
+        const listPrimary = this.loadLocal<LocalSvj>(this.LOCAL_KEY_SVJ)
+        const listLegacy = this.loadLegacySvj()
+        const ids = new Set(listPrimary.map(x => x.id))
+        const combined = [...listPrimary, ...listLegacy.filter(x => !ids.has(x.id))]
+        const local = combined.find(l => l.id === id)
         return local ? this.mapSvj(local) : null
       } else if (this.isPermissionError(e) && DISABLE_LOCAL_FALLBACK) {
         throw new Error('RLS blokuje getSVJ a fallback je vypnut.')
@@ -466,6 +499,7 @@ class SupabaseApiService {
   const empMap = empArr.reduce((acc: Record<string, unknown>, e) => ({ ...acc, [String(e['id'])]: e['full_name'] }), {} as Record<string, unknown>)
     return ((data as unknown[]) || []).map((p) => ({
       id: (p as Record<string, unknown>)['id'] as string,
+      employee_id: (p as Record<string, unknown>)['employee_id'] as string | undefined,
       month: (p as Record<string, unknown>)['month'] as number | undefined,
       year: (p as Record<string, unknown>)['year'] as number | undefined,
       employee_name: empMap[String((p as Record<string, unknown>)['employee_id'])] ?? null,
@@ -520,18 +554,53 @@ class SupabaseApiService {
     }
 
     // Upsert by (employee_id, year, month) so opakované ukládání nepřidává duplicity
-    const { data, error } = await supabase.from('payrolls')
-      .upsert([toInsert], { onConflict: 'employee_id,year,month' })
-      .select()
-      .single()
-    if (error) {
+    try {
+      const { data, error } = await supabase.from('payrolls')
+        .upsert([toInsert], { onConflict: 'employee_id,year,month' })
+        .select()
+        .single()
+      if (error) throw error
+      return data as PayrollRecord
+    } catch (error: unknown) {
       const msg = (error as { message?: string })?.message ?? String(error)
       if (/status.*check/i.test(msg)) {
         throw new Error('Invalid payroll status. Allowed: "pending" or "approved". The app will auto-normalize from draft/prepared/paid.')
       }
+      // Fallback for environments without the unique index yet
+      if (/no unique or exclusion constraint matching the ON CONFLICT specification/i.test(msg)) {
+        // Try manual upsert: select → update or insert
+        const empId = String((toInsert as Record<string, unknown>)['employee_id'] ?? '')
+        const year = Number((toInsert as Record<string, unknown>)['year'] ?? 0)
+        const month = Number((toInsert as Record<string, unknown>)['month'] ?? 0)
+        const { data: existing, error: selErr } = await supabase
+          .from('payrolls')
+          .select('id')
+          .eq('employee_id', empId)
+          .eq('year', year)
+          .eq('month', month)
+          .maybeSingle()
+        if (selErr) throw selErr
+        if (existing && (existing as { id?: string }).id) {
+          const { data: upd, error: updErr } = await supabase
+            .from('payrolls')
+            .update(toInsert as unknown as object)
+            .eq('id', (existing as { id: string }).id)
+            .select()
+            .single()
+          if (updErr) throw updErr
+          return upd as PayrollRecord
+        } else {
+          const { data: ins, error: insErr } = await supabase
+            .from('payrolls')
+            .insert([toInsert])
+            .select()
+            .single()
+          if (insErr) throw insErr
+          return ins as PayrollRecord
+        }
+      }
       throw error
     }
-    return data as PayrollRecord
   }
 
   async getAllPayrolls(): Promise<PayrollRecord[]> {
@@ -539,10 +608,11 @@ class SupabaseApiService {
     // doesn't exist (migration not run), fall back to reading payrolls and
     // then querying employees to assemble employee_name.
     try {
-      const { data, error } = await supabase.from('v_payrolls_overview').select('*').order('year', { ascending: false }).order('month', { ascending: false })
+  const { data, error } = await supabase.from('v_payrolls_overview').select('*').order('year', { ascending: false }).order('month', { ascending: false })
       if (error) throw error
   return (data as unknown[]).map((r: unknown) => ({
         id: (r as Record<string, unknown>)['id'],
+    employee_id: (r as Record<string, unknown>)['employee_id'],
         month: (r as Record<string, unknown>)['month'],
         year: (r as Record<string, unknown>)['year'],
         employee_name: (r as Record<string, unknown>)['employee_name'],
@@ -569,8 +639,9 @@ class SupabaseApiService {
           if (idVal) employeesMap[String(idVal)] = String(nameVal ?? '')
         }
       }
-    return ((payrolls as unknown[]) || []).map((r) => ({
+  return ((payrolls as unknown[]) || []).map((r) => ({
         id: (r as Record<string, unknown>)['id'],
+    employee_id: (r as Record<string, unknown>)['employee_id'] as string | undefined,
         month: (r as Record<string, unknown>)['month'],
         year: (r as Record<string, unknown>)['year'],
         employee_name: employeesMap[String((r as Record<string, unknown>)['employee_id'])] ?? null,
@@ -589,6 +660,7 @@ class SupabaseApiService {
       if (!data) return null
   return {
         id: data.id,
+    employee_id: (data as Record<string, unknown>)['employee_id'] as string | undefined,
         month: data.month,
         year: data.year,
         employee_name: data.employee_name,
@@ -611,6 +683,7 @@ class SupabaseApiService {
           }
   return {
         id: p.id,
+    employee_id: (p as Record<string, unknown>)['employee_id'] as string | undefined,
         month: p.month,
         year: p.year,
         employee_name,

@@ -32,7 +32,7 @@ export function EmployeesPage() {
 
   const { data: svjList } = useQuery({
     queryKey: ['svj-list'],
-    queryFn: apiService.getSVJList
+    queryFn: () => apiService.getSVJList()
   })
 
   const { data: allEmployees, isLoading } = useQuery({

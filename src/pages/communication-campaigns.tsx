@@ -42,7 +42,7 @@ export default function CommunicationCampaigns() {
 
   const { data: svjList = [] } = useQuery({
     queryKey: ['svj-list'],
-    queryFn: apiService.getSVJList
+    queryFn: () => apiService.getSVJList()
   });
 
   // Mock campaign data (would be stored in separate campaign tables)
